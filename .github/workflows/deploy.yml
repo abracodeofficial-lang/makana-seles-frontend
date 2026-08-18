@@ -19,7 +19,9 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      # يزامن مجلد dist/ فقط مع مجلد الفرونتند على السيرفر، ويحذف أي ملفات بناء قديمة (--delete)
+      # يزامن مجلد dist/ فقط مع مجلد public_html، ويحذف أي ملفات بناء قديمة (--delete)
+      # ملاحظة مهمة: public_html مشترك مع الباك اند — فيه index.php و.htaccess تبع Laravel
+      # (يوجّه /api للباك اند وكل شي ثاني لـ index.html) — لازم نستثنيهم عشان --delete ما يمسحهم
       - name: Sync dist/ via rsync over SSH
         uses: easingthemes/ssh-deploy@v5
         with:
@@ -29,4 +31,4 @@ jobs:
           REMOTE_USER: ${{ secrets.SSH_USER }}
           SOURCE: "dist/"
           TARGET: ${{ secrets.FRONTEND_PATH }}
-          ARGS: "-rlgoDzvc --delete"
+          ARGS: "-rlgoDzvc --delete --exclude=.htaccess --exclude=index.php --exclude=default.php --exclude=robots.txt"
