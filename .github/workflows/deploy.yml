@@ -23,7 +23,7 @@ jobs:
       # ملاحظة مهمة: public_html مشترك مع الباك اند — فيه index.php و.htaccess تبع Laravel
       # (يوجّه /api للباك اند وكل شي ثاني لـ index.html) — لازم نستثنيهم عشان --delete ما يمسحهم
       - name: Sync dist/ via rsync over SSH
-        uses: easingthemes/ssh-deploy@v5
+        uses: easingthemes/ssh-deploy@v6
         with:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_HOST: ${{ secrets.SSH_HOST }}
@@ -31,4 +31,5 @@ jobs:
           REMOTE_USER: ${{ secrets.SSH_USER }}
           SOURCE: "dist/"
           TARGET: ${{ secrets.FRONTEND_PATH }}
-          ARGS: "-rlgoDzvc --delete --exclude=.htaccess --exclude=index.php --exclude=default.php --exclude=robots.txt"
+          ARGS: "-rlgoDzvc --delete"
+          EXCLUDE: ".htaccess,index.php,default.php,robots.txt"
