@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 * { box-sizing: border-box; }
+:root { color-scheme: dark; }
 body { font-family: 'Cairo', sans-serif; }
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
