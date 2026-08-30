@@ -104,7 +104,7 @@ export default function LeavesPage() {
 
         <Card title="طلبات الإجازات">
           {isLoading ? <Loading /> : (
-            <Table headers={['رقم الطلب','الموظف','نوع الإجازة','من','إلى','الأيام','السبب','حالة المدير','حالة HR','الحالة النهائية','إجراء']}>
+            <Table headers={['رقم الطلب','الموظف','نوع الإجازة','من','إلى','الأيام','السبب','حالة المدير','حالة HR','الحالة النهائية','المحادثة','إجراء']}>
               {data?.data?.data?.map(req => (
                 <Tr key={req.id}>
                   <Td><span className="font-mono text-xs text-blue-400">{req.request_number}</span></Td>
@@ -122,19 +122,21 @@ export default function LeavesPage() {
                   <Td className="text-gray-400 text-xs">{fmtDate(req.to_date)}</Td>
                   <Td className="font-bold text-center">{req.days_count}</Td>
                   <Td className="text-gray-400 text-xs max-w-[120px] truncate">{req.reason}</Td>
-                  <Td>
-                    <Badge label={req.manager_status} color={FINAL_COLOR[req.manager_status] || 'gray'}/>
-                    {req.manager_status === 'إرجاع' && req.manager_notes && (
-                      <p className="text-xs text-purple-300 mt-1 max-w-[140px] truncate" title={req.manager_notes}>{req.manager_notes}</p>
-                    )}
-                  </Td>
-                  <Td>
-                    <Badge label={req.hr_status} color={FINAL_COLOR[req.hr_status] || 'gray'}/>
-                    {req.hr_status === 'إرجاع' && req.hr_notes && (
-                      <p className="text-xs text-purple-300 mt-1 max-w-[140px] truncate" title={req.hr_notes}>{req.hr_notes}</p>
-                    )}
-                  </Td>
+                  <Td><Badge label={req.manager_status} color={FINAL_COLOR[req.manager_status] || 'gray'}/></Td>
+                  <Td><Badge label={req.hr_status}      color={FINAL_COLOR[req.hr_status]      || 'gray'}/></Td>
                   <Td><Badge label={req.final_status}   color={FINAL_COLOR[req.final_status]}/></Td>
+                  <Td className="max-w-[180px] space-y-1">
+                    {req.manager_notes && (
+                      <p className="text-xs text-purple-300 truncate" title={req.manager_notes}>🗨️ المدير: {req.manager_notes}</p>
+                    )}
+                    {req.hr_notes && (
+                      <p className="text-xs text-purple-300 truncate" title={req.hr_notes}>🗨️ HR: {req.hr_notes}</p>
+                    )}
+                    {req.clarification && (
+                      <p className="text-xs text-blue-300 truncate" title={req.clarification}>↩️ رد الموظف: {req.clarification}</p>
+                    )}
+                    {!req.manager_notes && !req.hr_notes && !req.clarification && '—'}
+                  </Td>
                   <Td>
                     {canApprove && req.final_status === 'قيد المراجعة' && (
                       <div className="flex gap-1">
