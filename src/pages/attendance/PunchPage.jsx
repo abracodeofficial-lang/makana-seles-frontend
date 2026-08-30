@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { punchApi, permissionsApi, leaveRequestsApi } from '../../api/services';
+import { punchApi, permissionsApi, leaveRequestsApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, Card, Modal, Textarea, Select, Table, Tr, Td, Loading, Avatar,
@@ -466,6 +466,14 @@ function QuickLeaveModal({ onClose, onSaved }) {
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  const { data: ltData } = useQuery({
+    queryKey: ['leave-types-lookup'],
+    queryFn:  () => lookupApi.leaveTypes().then(r => r.data),
+  });
+  const leaveTypeOptions = (ltData?.data || [])
+    .filter(t => t.is_active !== false)
+    .map(t => ({ value: String(t.id), label: t.name }));
+
   const mut = useMutation({
     mutationFn: (data) => {
       const fd = new FormData();
@@ -481,6 +489,7 @@ function QuickLeaveModal({ onClose, onSaved }) {
       footer={
         <>
           <Btn onClick={() => {
+            if (!form.leave_type_id) { toast.error('نوع الإجازة مطلوب'); return; }
             if (!form.from_date || !form.to_date) { toast.error('التاريخ مطلوب'); return; }
             if (!form.reason.trim()) { toast.error('السبب مطلوب'); return; }
             mut.mutate(form);
@@ -489,6 +498,8 @@ function QuickLeaveModal({ onClose, onSaved }) {
         </>
       }>
       <div className="space-y-3">
+        <Select label="نوع الإجازة" value={form.leave_type_id}
+          onChange={e => set('leave_type_id', e.target.value)} options={leaveTypeOptions}/>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-gray-400 mb-1">من تاريخ</label>
