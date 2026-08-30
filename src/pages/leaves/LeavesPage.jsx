@@ -10,7 +10,7 @@ import {
 import useAuthStore from '../../store/authStore';
 import { Calendar, CheckCircle, XCircle, Clock } from 'lucide-react';
 
-const FINAL_COLOR = { 'قيد المراجعة': 'amber', 'معتمدة': 'green', 'مرفوضة': 'red' };
+const FINAL_COLOR = { 'قيد المراجعة': 'amber', 'معتمدة': 'green', 'مرفوضة': 'red', 'إرجاع': 'purple' };
 
 const fmtDate = (iso) => iso ? String(iso).slice(0, 10) : '—';
 
@@ -48,6 +48,19 @@ export default function LeavesPage() {
         : leaveRequestsApi.hrReject(id, { notes }),
     onSuccess: () => {
       toast.success('تم الرفض');
+      qc.invalidateQueries(['leave-requests']);
+      setActionModal(null);
+      setNotes('');
+    },
+  });
+
+  const inquireMut = useMutation({
+    mutationFn: ({ id, role, notes }) =>
+      role === 'manager'
+        ? leaveRequestsApi.managerInquire(id, { notes })
+        : leaveRequestsApi.hrInquire(id, { notes }),
+    onSuccess: () => {
+      toast.success('تم إرسال الاستفسار للموظف');
       qc.invalidateQueries(['leave-requests']);
       setActionModal(null);
       setNotes('');
@@ -114,6 +127,12 @@ export default function LeavesPage() {
                             type: 'reject',
                             role: req.manager_status !== 'موافق' ? 'manager' : 'hr',
                           })}>✗</Btn>
+                        <Btn size="sm" variant="outline" title="طلب توضيح من الموظف"
+                          onClick={() => setActionModal({
+                            id:   req.id,
+                            type: 'inquire',
+                            role: req.manager_status !== 'موافق' ? 'manager' : 'hr',
+                          })}>؟</Btn>
                       </div>
                     )}
                   </Td>
@@ -131,26 +150,35 @@ export default function LeavesPage() {
       <Modal
         open={!!actionModal}
         onClose={() => { setActionModal(null); setNotes(''); }}
-        title={actionModal?.type === 'approve' ? '✅ الموافقة على الإجازة' : '❌ رفض الإجازة'}
+        title={
+          actionModal?.type === 'approve' ? '✅ الموافقة على الإجازة' :
+          actionModal?.type === 'inquire' ? '❓ طلب توضيح من الموظف' : '❌ رفض الإجازة'
+        }
         footer={
           <>
             <Btn
-              variant={actionModal?.type === 'approve' ? 'success' : 'danger'}
-              loading={approveMut.isPending || rejectMut.isPending}
+              variant={actionModal?.type === 'approve' ? 'success' : actionModal?.type === 'inquire' ? 'outline' : 'danger'}
+              loading={approveMut.isPending || rejectMut.isPending || inquireMut.isPending}
               onClick={() => {
+                if (actionModal.type === 'inquire' && !notes.trim()) { toast.error('نص الاستفسار مطلوب'); return; }
+                if (actionModal.type === 'reject'  && !notes.trim()) { toast.error('سبب الرفض مطلوب'); return; }
                 if (actionModal.type === 'approve') approveMut.mutate({ ...actionModal, notes });
+                else if (actionModal.type === 'inquire') inquireMut.mutate({ ...actionModal, notes });
                 else rejectMut.mutate({ ...actionModal, notes });
               }}>
-              {actionModal?.type === 'approve' ? '✓ موافقة' : '✗ رفض'}
+              {actionModal?.type === 'approve' ? '✓ موافقة' : actionModal?.type === 'inquire' ? '❓ إرسال الاستفسار' : '✗ رفض'}
             </Btn>
             <Btn variant="outline" onClick={() => { setActionModal(null); setNotes(''); }}>إلغاء</Btn>
           </>
         }>
         <Textarea
-          label={actionModal?.type === 'approve' ? 'ملاحظة (اختياري)' : 'سبب الرفض *'}
+          label={
+            actionModal?.type === 'approve' ? 'ملاحظة (اختياري)' :
+            actionModal?.type === 'inquire' ? 'نص الاستفسار *' : 'سبب الرفض *'
+          }
           value={notes}
           onChange={e => setNotes(e.target.value)}
-          placeholder="اكتب ملاحظتك أو سبب الرفض..."
+          placeholder="اكتب ملاحظتك أو سبب الرفض أو الاستفسار..."
         />
       </Modal>
     </div>

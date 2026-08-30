@@ -113,8 +113,10 @@ export const leaveRequestsApi = {
   }),
   managerApprove: (id, data) => client.patch(`/leave-requests/${id}/manager-approve`, data),
   managerReject:  (id, data) => client.patch(`/leave-requests/${id}/manager-reject`, data),
+  managerInquire: (id, data) => client.patch(`/leave-requests/${id}/manager-inquire`, data),
   hrApprove:      (id, data) => client.patch(`/leave-requests/${id}/hr-approve`, data),
   hrReject:       (id, data) => client.patch(`/leave-requests/${id}/hr-reject`, data),
+  hrInquire:      (id, data) => client.patch(`/leave-requests/${id}/hr-inquire`, data),
 };
 
 // ── PERMISSIONS
