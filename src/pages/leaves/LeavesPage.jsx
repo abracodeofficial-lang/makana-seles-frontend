@@ -12,6 +12,8 @@ import { Calendar, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 const FINAL_COLOR = { 'قيد المراجعة': 'amber', 'معتمدة': 'green', 'مرفوضة': 'red' };
 
+const fmtDate = (iso) => iso ? String(iso).slice(0, 10) : '—';
+
 export default function LeavesPage() {
   const qc = useQueryClient();
   const { can } = useAuthStore();
@@ -90,8 +92,8 @@ export default function LeavesPage() {
                     </div>
                   </Td>
                   <Td>{req.leave_type?.name}</Td>
-                  <Td className="text-gray-400 text-xs">{req.from_date}</Td>
-                  <Td className="text-gray-400 text-xs">{req.to_date}</Td>
+                  <Td className="text-gray-400 text-xs">{fmtDate(req.from_date)}</Td>
+                  <Td className="text-gray-400 text-xs">{fmtDate(req.to_date)}</Td>
                   <Td className="font-bold text-center">{req.days_count}</Td>
                   <Td className="text-gray-400 text-xs max-w-[120px] truncate">{req.reason}</Td>
                   <Td><Badge label={req.manager_status} color={FINAL_COLOR[req.manager_status] || 'gray'}/></Td>
