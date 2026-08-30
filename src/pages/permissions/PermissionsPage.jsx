@@ -35,7 +35,7 @@ const fmtDateTime = (str) => {
   if (!str) return '—';
   const d = new Date(str);
   if (isNaN(d)) return str;
-  return d.toLocaleString('ar-SA', {
+  return d.toLocaleString('ar-SA-u-nu-latn', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });

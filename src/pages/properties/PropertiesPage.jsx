@@ -150,10 +150,10 @@ export default function PropertiesPage() {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <p className="text-lg font-black text-blue-400">
-                      {Number(prop.listed_price).toLocaleString('ar-SA')} ريال
+                      {Number(prop.listed_price).toLocaleString('ar-SA-u-nu-latn')} ريال
                     </p>
                     <p className="text-xs text-gray-500">
-                      {prop.total_area} م² • {Number(prop.price_per_meter).toLocaleString('ar-SA')} ريال/م²
+                      {prop.total_area} م² • {Number(prop.price_per_meter).toLocaleString('ar-SA-u-nu-latn')} ريال/م²
                     </p>
                   </div>
                 </div>
@@ -565,7 +565,7 @@ const SectionTitle = ({ children }) => (
 );
 
 const yn = (v) => v ? 'نعم' : 'لا';
-const fmt = (n) => n ? Number(n).toLocaleString('ar-SA') : '—';
+const fmt = (n) => n ? Number(n).toLocaleString('ar-SA-u-nu-latn') : '—';
 
 function PropertyDetail({ id, onClose }) {
   const { data, isLoading } = useQuery({

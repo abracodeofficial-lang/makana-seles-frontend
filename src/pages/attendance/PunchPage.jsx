@@ -24,7 +24,7 @@ const fmtTime = (t) => t ? t.slice(0, 5) : '—';
 const fmtDate = (iso) => {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString('ar-SA', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+  return d.toLocaleDateString('ar-SA-u-nu-latn', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
 const calcHours = (checkIn, checkOut) => {
@@ -52,8 +52,8 @@ function LiveClock() {
     return () => clearInterval(t);
   }, []);
 
-  const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const dateStr = now.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = now.toLocaleDateString('ar-SA-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <div className="text-center py-6 select-none">

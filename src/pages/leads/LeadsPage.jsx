@@ -12,7 +12,7 @@ import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp } from
 const formatDate = (str) => {
   if (!str) return '—';
   const d = new Date(str);
-  return isNaN(d) ? str : d.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
+  return isNaN(d) ? str : d.toLocaleDateString('ar-SA-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric' });
 };
 
 const toDateInput = (d) => d ? String(d).slice(0, 10) : '';
@@ -100,7 +100,7 @@ export default function LeadsPage() {
                     <Td className="text-gray-400">{lead.phone}</Td>
                     <Td>{lead.property_type?.name || '—'}</Td>
                     <Td className="font-semibold text-blue-400">
-                      {lead.budget ? `${Number(lead.budget).toLocaleString('ar-SA')} ريال` : '—'}
+                      {lead.budget ? `${Number(lead.budget).toLocaleString('ar-SA-u-nu-latn')} ريال` : '—'}
                     </Td>
                     <Td><Badge label={lead.classification} color={CLASS_COLOR[lead.classification]}/></Td>
                     <Td>
@@ -269,7 +269,7 @@ function LeadDetail({ id, onClose }) {
       </div>
       <InfoRow label="صفة المتقدم"     value={l.applicant_type} />
       <InfoRow label="المصدر"          value={l.source} />
-      <InfoRow label="الميزانية"       value={l.budget ? `${Number(l.budget).toLocaleString('ar-SA')} ريال` : '—'} valueClass="text-blue-400" />
+      <InfoRow label="الميزانية"       value={l.budget ? `${Number(l.budget).toLocaleString('ar-SA-u-nu-latn')} ريال` : '—'} valueClass="text-blue-400" />
       <InfoRow label="هدف الشراء"     value={l.purchase_goal} />
       <InfoRow label="الموظف المسؤول" value={l.operation_employee?.full_name} />
       <InfoRow label="آخر تحديث"      value={l.update_status} />

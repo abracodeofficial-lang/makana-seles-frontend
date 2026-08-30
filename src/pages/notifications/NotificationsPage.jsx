@@ -35,7 +35,7 @@ const timeAgo = (dateStr) => {
   if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`;
   if (diff < 86400)return `منذ ${Math.floor(diff / 3600)} ساعة`;
   if (diff < 604800)return `منذ ${Math.floor(diff / 86400)} يوم`;
-  return new Date(dateStr).toLocaleDateString('ar-SA');
+  return new Date(dateStr).toLocaleDateString('ar-SA-u-nu-latn');
 };
 
 // ── الصفحة ───────────────────────────────────────────────────

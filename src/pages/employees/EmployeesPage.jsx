@@ -26,7 +26,7 @@ const PERM_ACTIONS = [
 
 const STATUS_COLOR = { نشط: 'green', 'إيقاف مؤقت': 'red', إجازة: 'amber' };
 
-const fmt = (n) => n ? Number(n).toLocaleString('ar-SA') : '0';
+const fmt = (n) => n ? Number(n).toLocaleString('ar-SA-u-nu-latn') : '0';
 
 // ── الصفحة الرئيسية ───────────────────────────────────────────
 export default function EmployeesPage() {

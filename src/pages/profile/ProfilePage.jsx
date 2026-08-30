@@ -12,8 +12,8 @@ import {
 } from 'lucide-react';
 
 // ── helpers ───────────────────────────────────────────────────
-const numFmt  = (n) => Number(n || 0).toLocaleString('ar-SA');
-const dateFmt = (d) => d ? new Date(d).toLocaleDateString('ar-SA') : '—';
+const numFmt  = (n) => Number(n || 0).toLocaleString('ar-SA-u-nu-latn');
+const dateFmt = (d) => d ? new Date(d).toLocaleDateString('ar-SA-u-nu-latn') : '—';
 
 const now         = new Date();
 const MONTH_FROM  = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
