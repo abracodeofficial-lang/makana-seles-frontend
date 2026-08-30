@@ -16,12 +16,14 @@ const fmtDate = (iso) => iso ? String(iso).slice(0, 10) : '—';
 
 export default function LeavesPage() {
   const qc = useQueryClient();
-  const { can } = useAuthStore();
+  const { can, employee } = useAuthStore();
   const canApprove = can('leave_requests', 'approve');
 
-  const [showRequest, setShowRequest] = useState(false);
-  const [actionModal, setActionModal] = useState(null);
-  const [notes, setNotes]             = useState('');
+  const [showRequest, setShowRequest]     = useState(false);
+  const [actionModal, setActionModal]     = useState(null);
+  const [notes, setNotes]                 = useState('');
+  const [clarifyModal, setClarifyModal]   = useState(null); // { id, note }
+  const [clarifyText, setClarifyText]     = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['leave-requests'],
@@ -67,6 +69,17 @@ export default function LeavesPage() {
     },
   });
 
+  const clarifyMut = useMutation({
+    mutationFn: ({ id, clarification }) => leaveRequestsApi.clarify(id, { clarification }),
+    onSuccess: () => {
+      toast.success('تم إرسال التوضيح، الطلب أصبح قيد المراجعة مجدداً');
+      qc.invalidateQueries(['leave-requests']);
+      setClarifyModal(null);
+      setClarifyText('');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'فشل إرسال التوضيح'),
+  });
+
   const stats = data?.stats || {};
 
   return (
@@ -109,8 +122,18 @@ export default function LeavesPage() {
                   <Td className="text-gray-400 text-xs">{fmtDate(req.to_date)}</Td>
                   <Td className="font-bold text-center">{req.days_count}</Td>
                   <Td className="text-gray-400 text-xs max-w-[120px] truncate">{req.reason}</Td>
-                  <Td><Badge label={req.manager_status} color={FINAL_COLOR[req.manager_status] || 'gray'}/></Td>
-                  <Td><Badge label={req.hr_status}      color={FINAL_COLOR[req.hr_status]      || 'gray'}/></Td>
+                  <Td>
+                    <Badge label={req.manager_status} color={FINAL_COLOR[req.manager_status] || 'gray'}/>
+                    {req.manager_status === 'إرجاع' && req.manager_notes && (
+                      <p className="text-xs text-purple-300 mt-1 max-w-[140px] truncate" title={req.manager_notes}>{req.manager_notes}</p>
+                    )}
+                  </Td>
+                  <Td>
+                    <Badge label={req.hr_status} color={FINAL_COLOR[req.hr_status] || 'gray'}/>
+                    {req.hr_status === 'إرجاع' && req.hr_notes && (
+                      <p className="text-xs text-purple-300 mt-1 max-w-[140px] truncate" title={req.hr_notes}>{req.hr_notes}</p>
+                    )}
+                  </Td>
                   <Td><Badge label={req.final_status}   color={FINAL_COLOR[req.final_status]}/></Td>
                   <Td>
                     {canApprove && req.final_status === 'قيد المراجعة' && (
@@ -134,6 +157,12 @@ export default function LeavesPage() {
                             role: req.manager_status !== 'موافق' ? 'manager' : 'hr',
                           })}>؟</Btn>
                       </div>
+                    )}
+                    {req.employee_id === employee?.id && (req.manager_status === 'إرجاع' || req.hr_status === 'إرجاع') && (
+                      <Btn size="sm" variant="outline"
+                        onClick={() => setClarifyModal({ id: req.id, note: req.manager_status === 'إرجاع' ? req.manager_notes : req.hr_notes })}>
+                        💬 الرد على الاستفسار
+                      </Btn>
                     )}
                   </Td>
                 </Tr>
@@ -179,6 +208,38 @@ export default function LeavesPage() {
           value={notes}
           onChange={e => setNotes(e.target.value)}
           placeholder="اكتب ملاحظتك أو سبب الرفض أو الاستفسار..."
+        />
+      </Modal>
+
+      {/* الرد على استفسار المدير/HR على نفس الطلب */}
+      <Modal
+        open={!!clarifyModal}
+        onClose={() => { setClarifyModal(null); setClarifyText(''); }}
+        title="💬 الرد على الاستفسار"
+        footer={
+          <>
+            <Btn
+              loading={clarifyMut.isPending}
+              onClick={() => {
+                if (!clarifyText.trim()) { toast.error('التوضيح مطلوب'); return; }
+                clarifyMut.mutate({ id: clarifyModal.id, clarification: clarifyText });
+              }}>
+              📤 إرسال التوضيح
+            </Btn>
+            <Btn variant="outline" onClick={() => { setClarifyModal(null); setClarifyText(''); }}>إلغاء</Btn>
+          </>
+        }>
+        {clarifyModal?.note && (
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 mb-3">
+            <p className="text-xs text-purple-300 font-semibold mb-1">استفسار المسؤول:</p>
+            <p className="text-sm text-gray-200">{clarifyModal.note}</p>
+          </div>
+        )}
+        <Textarea
+          label="توضيحك *"
+          value={clarifyText}
+          onChange={e => setClarifyText(e.target.value)}
+          placeholder="اكتب ردك على الاستفسار..."
         />
       </Modal>
     </div>
