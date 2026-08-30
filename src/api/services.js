@@ -85,13 +85,23 @@ export const attendanceApi = {
   export:  (params) => client.get('/attendance/export', { params }),
 };
 
+// وقت/تاريخ جهاز الموظف نفسه (مو وقت السيرفر) — يُرسل مع كل بصمة
+const deviceNow = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  };
+};
+
 // ── PUNCH (بصمة الموظف)
 export const punchApi = {
-  today:      ()       => client.get('/punch/today'),
-  checkIn:    ()       => client.post('/punch/check-in'),
-  checkOut:   ()       => client.post('/punch/check-out'),
-  breakStart: ()       => client.post('/punch/break-start'),
-  breakEnd:   ()       => client.post('/punch/break-end'),
+  today:      ()       => client.get('/punch/today', { params: deviceNow() }),
+  checkIn:    ()       => client.post('/punch/check-in', deviceNow()),
+  checkOut:   ()       => client.post('/punch/check-out', deviceNow()),
+  breakStart: ()       => client.post('/punch/break-start', deviceNow()),
+  breakEnd:   ()       => client.post('/punch/break-end', deviceNow()),
   history:    (params) => client.get('/punch/history', { params }),
 };
 
