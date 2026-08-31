@@ -126,6 +126,8 @@ export const permissionsApi = {
   create:  (data)     => client.post('/permission-requests', data),
   approve: (id, data) => client.patch(`/permission-requests/${id}/approve`, data),
   reject:  (id, data) => client.patch(`/permission-requests/${id}/reject`, data),
+  inquire: (id, data) => client.patch(`/permission-requests/${id}/inquire`, data),
+  clarify: (id, data) => client.patch(`/permission-requests/${id}/clarify`, data),
 };
 
 // ── LOOKUP

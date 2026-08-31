@@ -14,6 +14,7 @@ const STATUS_COLOR = {
   'قيد المراجعة': 'amber',
   'موافق':        'green',
   'مرفوض':        'red',
+  'إرجاع':        'purple',
 };
 
 const TYPE_COLOR = {
@@ -43,13 +44,14 @@ const fmtDateTime = (str) => {
 
 // ── الصفحة الرئيسية ──────────────────────────────────────────
 export default function PermissionsPage() {
-  const qc         = useQueryClient();
-  const { can }    = useAuthStore();
-  const canApprove = can('permissions', 'approve');
+  const qc                = useQueryClient();
+  const { can, employee } = useAuthStore();
+  const canApprove         = can('permissions', 'approve');
 
   const [statusFilter, setStatusFilter] = useState('');
   const [showNewForm,  setShowNewForm]  = useState(false);
   const [reviewRecord, setReviewRecord] = useState(null);
+  const [clarifyRecord, setClarifyRecord] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['permission-requests', statusFilter],
@@ -106,7 +108,9 @@ export default function PermissionsPage() {
                 key={req.id}
                 req={req}
                 canApprove={canApprove}
+                isOwner={req.employee_id === employee?.id}
                 onReview={() => setReviewRecord(req)}
+                onClarify={() => setClarifyRecord(req)}
               />
             ))}
           </div>
@@ -128,20 +132,28 @@ export default function PermissionsPage() {
           onSaved={() => { invalidate(); setReviewRecord(null); }}
         />
       )}
+
+      {clarifyRecord && (
+        <ClarifyModal
+          record={clarifyRecord}
+          onClose={() => setClarifyRecord(null)}
+          onSaved={() => { invalidate(); setClarifyRecord(null); }}
+        />
+      )}
     </div>
   );
 }
 
 // ── بطاقة الطلب ──────────────────────────────────────────────
-function RequestCard({ req, canApprove, onReview }) {
-  const isPending = req.status === 'قيد المراجعة';
+function RequestCard({ req, canApprove, isOwner, onReview, onClarify }) {
+  const isPending = req.final_status === 'قيد المراجعة';
 
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden hover:border-gray-600 transition-all flex flex-col">
 
       {/* رأس البطاقة */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <Badge label={req.status || 'قيد المراجعة'} color={STATUS_COLOR[req.status] || 'amber'} />
+        <Badge label={req.final_status || 'قيد المراجعة'} color={STATUS_COLOR[req.final_status] || 'amber'} />
         <Badge label={req.type} color={TYPE_COLOR[req.type] || 'gray'} />
       </div>
 
@@ -174,7 +186,7 @@ function RequestCard({ req, canApprove, onReview }) {
           </p>
         )}
 
-        {req.status === 'موافق' && (
+        {req.final_status === 'موافق' && (
           <div className="flex gap-2 flex-wrap pt-1">
             <Badge label="موافق" color="green" />
             {req.hr_status && (
@@ -184,14 +196,24 @@ function RequestCard({ req, canApprove, onReview }) {
         )}
 
         {req.manager_notes && (
-          <p className="text-xs text-amber-400/80 bg-amber-500/10 rounded-lg px-3 py-2 border border-amber-500/20">
-            <span className="font-semibold">ملاحظة: </span>{req.manager_notes}
+          <p className="text-xs text-purple-300 bg-purple-500/10 rounded-lg px-3 py-2 border border-purple-500/20">
+            🗨️ <span className="font-semibold">استفسار: </span>{req.manager_notes}
+          </p>
+        )}
+        {req.clarification && (
+          <p className="text-xs text-blue-300 bg-blue-500/10 rounded-lg px-3 py-2 border border-blue-500/20">
+            ↩️ <span className="font-semibold">رد الموظف: </span>{req.clarification}
           </p>
         )}
       </div>
 
       {/* زر الإجراء */}
-      <div className="px-4 pb-4 pt-2 border-t border-gray-700/50">
+      <div className="px-4 pb-4 pt-2 border-t border-gray-700/50 space-y-2">
+        {isOwner && req.manager_status === 'إرجاع' && (
+          <Btn variant="outline" className="w-full justify-center" onClick={onClarify}>
+            💬 الرد على الاستفسار
+          </Btn>
+        )}
         {canApprove && isPending ? (
           <Btn className="w-full justify-center" onClick={onReview}>
             <ThumbsUp size={13}/> مراجعة الطلب
@@ -209,7 +231,7 @@ function RequestCard({ req, canApprove, onReview }) {
 // ── Modal: مراجعة الطلب ──────────────────────────────────────
 function ReviewModal({ record, canApprove, onClose, onSaved }) {
   const [notes, setNotes] = useState('');
-  const isPending = record.status === 'قيد المراجعة';
+  const isPending = record.final_status === 'قيد المراجعة';
 
   const approveMut = useMutation({
     mutationFn: () => permissionsApi.approve(record.id, { notes }),
@@ -223,9 +245,20 @@ function ReviewModal({ record, canApprove, onClose, onSaved }) {
     onError: (err) => toast.error(err.response?.data?.message || 'حدث خطأ'),
   });
 
+  const inquireMut = useMutation({
+    mutationFn: () => permissionsApi.inquire(record.id, { notes }),
+    onSuccess: () => { toast.success('تم إرسال الاستفسار للموظف'); onSaved(); },
+    onError: (err) => toast.error(err.response?.data?.message || 'حدث خطأ'),
+  });
+
   const handleReject = () => {
     if (!notes.trim()) { toast.error('يرجى كتابة سبب الرفض'); return; }
     rejectMut.mutate();
+  };
+
+  const handleInquire = () => {
+    if (!notes.trim()) { toast.error('يرجى كتابة نص الاستفسار'); return; }
+    inquireMut.mutate();
   };
 
   return (
@@ -242,6 +275,9 @@ function ReviewModal({ record, canApprove, onClose, onSaved }) {
             </Btn>
             <Btn variant="danger" onClick={handleReject} loading={rejectMut.isPending}>
               <ThumbsDown size={13}/> رفض
+            </Btn>
+            <Btn variant="outline" onClick={handleInquire} loading={inquireMut.isPending} title="طلب توضيح من الموظف">
+              ؟ استفسار
             </Btn>
             <Btn variant="outline" onClick={onClose} className="mr-auto">إغلاق</Btn>
           </>
@@ -265,7 +301,7 @@ function ReviewModal({ record, canApprove, onClose, onSaved }) {
               )}
             </div>
           </div>
-          <Badge label={record.status || 'قيد المراجعة'} color={STATUS_COLOR[record.status] || 'amber'} />
+          <Badge label={record.final_status || 'قيد المراجعة'} color={STATUS_COLOR[record.final_status] || 'amber'} />
         </div>
 
         {/* تفاصيل */}
@@ -292,23 +328,70 @@ function ReviewModal({ record, canApprove, onClose, onSaved }) {
 
         {/* ملاحظات سابقة */}
         {record.manager_notes && (
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
-            <p className="text-xs text-amber-400 font-semibold mb-1">ملاحظات سابقة</p>
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3">
+            <p className="text-xs text-purple-300 font-semibold mb-1">🗨️ استفسار سابق</p>
             <p className="text-sm text-gray-300">{record.manager_notes}</p>
+          </div>
+        )}
+        {record.clarification && (
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
+            <p className="text-xs text-blue-300 font-semibold mb-1">↩️ رد الموظف</p>
+            <p className="text-sm text-gray-300">{record.clarification}</p>
           </div>
         )}
 
         {/* خانة الملاحظات */}
         {canApprove && isPending && (
           <Textarea
-            label="ملاحظات المراجعة (مطلوبة عند الرفض)"
+            label="ملاحظات المراجعة (مطلوبة عند الرفض أو الاستفسار)"
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={3}
-            placeholder="اكتب ملاحظتك هنا..."
+            placeholder="اكتب ملاحظتك أو سبب الرفض أو نص الاستفسار..."
           />
         )}
       </div>
+    </Modal>
+  );
+}
+
+// ── Modal: الرد على استفسار المسؤول على نفس الطلب ──────────────
+function ClarifyModal({ record, onClose, onSaved }) {
+  const [text, setText] = useState('');
+
+  const mut = useMutation({
+    mutationFn: () => permissionsApi.clarify(record.id, { clarification: text }),
+    onSuccess: () => { toast.success('تم إرسال التوضيح، الطلب أصبح قيد المراجعة مجدداً'); onSaved(); },
+    onError: (err) => toast.error(err.response?.data?.message || 'فشل إرسال التوضيح'),
+  });
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="💬 الرد على الاستفسار"
+      footer={
+        <>
+          <Btn loading={mut.isPending} onClick={() => {
+            if (!text.trim()) { toast.error('التوضيح مطلوب'); return; }
+            mut.mutate();
+          }}>📤 إرسال التوضيح</Btn>
+          <Btn variant="outline" onClick={onClose}>إلغاء</Btn>
+        </>
+      }
+    >
+      {record.manager_notes && (
+        <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 mb-3">
+          <p className="text-xs text-purple-300 font-semibold mb-1">استفسار المسؤول:</p>
+          <p className="text-sm text-gray-200">{record.manager_notes}</p>
+        </div>
+      )}
+      <Textarea
+        label="توضيحك *"
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="اكتب ردك على الاستفسار..."
+      />
     </Modal>
   );
 }
