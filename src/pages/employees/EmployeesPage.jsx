@@ -327,6 +327,7 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving]     = useState(false);
   const [showSalary, setShowSalary] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const fileRef = useRef();
   const [docForm, setDocForm] = useState({ type: 'سيرة ذاتية', name: '', file: null });
   const [uploading, setUploading] = useState(false);
@@ -410,7 +411,8 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
   const shifts   = (hrLookup?.shifts         || []).map(s => ({ value: String(s.id), label: s.name }));
 
   const { can } = useAuthStore();
-  const canManagePerms = can('roles', 'edit');
+  const canManagePerms  = can('roles', 'edit');
+  const canEditEmployee = can('employees', 'edit');
 
   const TABS = [
     { key: 'info',  label: 'البيانات العامة',     icon: <Users size={13}/> },
@@ -428,6 +430,11 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
             {tab === 'info' && !editMode && (
               <>
                 <Btn variant="outline" size="sm" onClick={() => setEditMode(true)}><Pencil size={12}/> تعديل</Btn>
+                {canEditEmployee && (
+                  <Btn variant="outline" size="sm" onClick={() => setShowResetPassword(true)}>
+                    🔑 إعادة تعيين كلمة المرور
+                  </Btn>
+                )}
                 {emp?.status === 'نشط'
                   ? <Btn variant="danger" size="sm" onClick={() => confirm('إيقاف الموظف مؤقتاً؟') && suspendMut.mutate()} loading={suspendMut.isPending}>
                       <UserX size={12}/> إيقاف مؤقت
@@ -690,6 +697,10 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
         <SalaryModal id={id} currentSalary={emp?.basic_salary} onClose={() => setShowSalary(false)}
           onSaved={() => { setShowSalary(false); refetch(); }} />
       )}
+      {showResetPassword && (
+        <ResetPasswordModal id={id} employeeName={emp?.full_name} onClose={() => setShowResetPassword(false)}
+          onSaved={() => setShowResetPassword(false)} />
+      )}
     </Modal>
   );
 }
@@ -731,6 +742,56 @@ function SalaryModal({ id, currentSalary, onClose, onSaved }) {
         <Input  label="الراتب الجديد (﷼) *" value={form.new_salary}     onChange={e => set('new_salary', e.target.value)} type="number" />
         <Input  label="تاريخ التطبيق *"      value={form.effective_date} onChange={e => set('effective_date', e.target.value)} type="date" />
         <Textarea label="سبب التعديل *"      value={form.reason}         onChange={e => set('reason', e.target.value)} rows={2} />
+      </div>
+    </Modal>
+  );
+}
+
+// ── Modal إعادة تعيين كلمة المرور ──────────────────────────────
+function ResetPasswordModal({ id, employeeName, onClose, onSaved }) {
+  const [password, setPassword] = useState('');
+  const [loading, setLoading]   = useState(false);
+
+  const generate = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let p = '';
+    for (let i = 0; i < 10; i++) p += chars[Math.floor(Math.random() * chars.length)];
+    setPassword(p);
+  };
+
+  const handleSave = async () => {
+    if (password.length < 8) { toast.error('كلمة المرور يجب أن لا تقل عن 8 أحرف'); return; }
+    setLoading(true);
+    try {
+      await employeesApi.resetPassword(id, { password });
+      toast.success('تم تحديث كلمة المرور بنجاح');
+      onSaved();
+    } catch (err) {
+      const errors = err.response?.data?.errors;
+      if (errors) Object.values(errors).flat().forEach(e => toast.error(e));
+      else toast.error(err.response?.data?.message || 'فشل تحديث كلمة المرور');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="إعادة تعيين كلمة المرور"
+      footer={
+        <>
+          <Btn onClick={handleSave} loading={loading}>🔑 حفظ كلمة المرور الجديدة</Btn>
+          <Btn variant="outline" onClick={onClose}>إلغاء</Btn>
+        </>
+      }>
+      <div className="space-y-4">
+        <p className="text-sm text-gray-400">
+          إعادة تعيين كلمة مرور <span className="text-gray-200 font-semibold">{employeeName}</span>.
+          النظام لا يرسل كلمة المرور بالإيميل — لازم تبلّغيه فيها بنفسك بعد الحفظ.
+        </p>
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <Input label="كلمة المرور الجديدة *" value={password} onChange={e => setPassword(e.target.value)} />
+          </div>
+          <Btn type="button" variant="outline" onClick={generate}>🎲 توليد</Btn>
+        </div>
       </div>
     </Modal>
   );

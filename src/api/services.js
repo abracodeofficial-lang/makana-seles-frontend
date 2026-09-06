@@ -67,6 +67,7 @@ export const employeesApi = {
   getPermissions:(id)           => client.get(`/employees/${id}/permissions`),
   updatePermissions: (id, data) => client.put(`/employees/${id}/permissions`, data),
   sendWelcomeEmails: ()          => client.post('/employees/send-welcome-emails'),
+  resetPassword:     (id, data)  => client.patch(`/employees/${id}/reset-password`, data),
 };
 
 // ── PERMISSION GROUPS (الأدوار)
