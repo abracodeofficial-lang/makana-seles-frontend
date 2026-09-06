@@ -12,7 +12,7 @@ import {
 import {
   Plus, Pencil, Eye, Users, UserCheck, UserX,
   FileText, DollarSign, Calendar, Upload, Trash2, Download,
-  ChevronRight, ChevronLeft, Wallet, ShieldCheck,
+  ChevronRight, ChevronLeft, Wallet, ShieldCheck, Mail,
 } from 'lucide-react';
 
 const PERM_ACTIONS = [
@@ -31,6 +31,8 @@ const fmt = (n) => n ? Number(n).toLocaleString('ar-SA-u-nu-latn') : '0';
 // ── الصفحة الرئيسية ───────────────────────────────────────────
 export default function EmployeesPage() {
   const qc = useQueryClient();
+  const { can } = useAuthStore();
+  const canEdit = can('employees', 'edit');
   const [search, setSearch]         = useState('');
   const [deptFilter, setDeptFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -55,6 +57,12 @@ export default function EmployeesPage() {
   const stats = data?.stats || {};
   const employees = data?.data?.data || [];
 
+  const welcomeEmailsMut = useMutation({
+    mutationFn: () => employeesApi.sendWelcomeEmails(),
+    onSuccess: (res) => toast.success(res.data.message),
+    onError: (err) => toast.error(err.response?.data?.message || 'فشل إرسال الإيميلات'),
+  });
+
   return (
     <div>
       <PageHeader
@@ -63,6 +71,13 @@ export default function EmployeesPage() {
         actions={
           <>
             <SearchBox value={search} onChange={setSearch} placeholder="بحث بالاسم أو الرقم أو المسمى..." />
+            {canEdit && (
+              <Btn variant="outline"
+                onClick={() => confirm('إرسال إيميل ترحيبي لكل الموظفين اللي ما وصلهم بعد؟') && welcomeEmailsMut.mutate()}
+                loading={welcomeEmailsMut.isPending}>
+                <Mail size={16}/> إرسال إيميل ترحيبي
+              </Btn>
+            )}
             <Btn onClick={() => setShowWizard(true)}>
               <Plus size={16}/> إضافة موظف
             </Btn>
