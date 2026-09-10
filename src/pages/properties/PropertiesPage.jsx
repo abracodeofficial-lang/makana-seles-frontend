@@ -8,7 +8,7 @@ import {
   Textarea, SearchBox, Loading, ErrorMsg, InfoRow, Avatar,
   Table, Tr, Td,
 } from '../../components/ui';
-import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, MessageCircle, Phone, MapPin, Home } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, MessageCircle, Phone, MapPin, Home, X } from 'lucide-react';
 
 const STATUS_COLOR = { 'متاح': 'green', 'محجوز': 'amber', 'مباع': 'red', 'قيد المراجعة': 'purple' };
 const MEDIA_COLOR  = { 'تم': 'green', 'جاري': 'amber', 'معلق': 'red', 'ملغي': 'gray', 'جديد': 'blue' };
@@ -62,6 +62,9 @@ export default function PropertiesPage() {
     staleTime: 30_000,
   });
 
+  const resetFilters = () => { setFilters({}); setSearch(''); };
+  const hasActiveFilters = search || Object.values(filters).some(v => v);
+
   const deleteMut = useMutation({
     mutationFn: propertiesApi.delete,
     onSuccess: () => { toast.success('تم حذف العقار'); qc.invalidateQueries(['properties']); },
@@ -90,6 +93,14 @@ export default function PropertiesPage() {
       <div className="p-6 space-y-6">
         {/* Filters */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">الفلاتر</p>
+            {hasActiveFilters && (
+              <Btn size="sm" variant="outline" onClick={resetFilters}>
+                <X size={13}/> إلغاء الفلترة
+              </Btn>
+            )}
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">اسم المالك</label>

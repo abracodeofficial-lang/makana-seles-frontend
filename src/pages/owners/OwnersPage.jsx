@@ -7,7 +7,7 @@ import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
   Textarea, SearchBox, Avatar, Card, Loading, ErrorMsg, InfoRow,
 } from '../../components/ui';
-import { Plus, Pencil, Trash2, Building2, Users, Star, MessageCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Users, Star, MessageCircle, X } from 'lucide-react';
 
 const toDateInput = (d) => d ? String(d).slice(0, 10) : '';
 const waPhone = (p = '') => { const d = p.replace(/\D/g,''); return d.startsWith('966') ? d : d.startsWith('0') ? '966'+d.slice(1) : '966'+d; };
@@ -29,6 +29,9 @@ export default function OwnersPage() {
     queryFn: () => ownersApi.list({ search, ...filters }).then(r => r.data),
     staleTime: 30_000,
   });
+
+  const resetFilters = () => { setFilters({}); setSearch(''); };
+  const hasActiveFilters = search || Object.values(filters).some(v => v);
 
   const deleteMut = useMutation({
     mutationFn: ownersApi.delete,
@@ -58,6 +61,14 @@ export default function OwnersPage() {
       <div className="p-6 space-y-6">
         {/* Filters */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">الفلاتر</p>
+            {hasActiveFilters && (
+              <Btn size="sm" variant="outline" onClick={resetFilters}>
+                <X size={13}/> إلغاء الفلترة
+              </Btn>
+            )}
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">اسم المالك</label>

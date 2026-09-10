@@ -7,7 +7,7 @@ import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
   Textarea, SearchBox, Avatar, Card, Loading, InfoRow,
 } from '../../components/ui';
-import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X } from 'lucide-react';
 
 const formatDate = (str) => {
   if (!str) return '—';
@@ -26,15 +26,19 @@ export default function LeadsPage() {
   const qc = useQueryClient();
   const [tab, setTab]               = useState('leads');
   const [search, setSearch]         = useState('');
+  const [filters, setFilters]       = useState({});
   const [showForm, setShowForm]     = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   const [editing, setEditing]       = useState(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['leads', search],
-    queryFn: () => leadsApi.list({ search }).then(r => r.data),
+    queryKey: ['leads', search, filters],
+    queryFn: () => leadsApi.list({ search, ...filters }).then(r => r.data),
     staleTime: 30_000,
   });
+
+  const resetFilters = () => { setFilters({}); setSearch(''); };
+  const hasActiveFilters = search || Object.values(filters).some(v => v);
 
   const { data: visitsData } = useQuery({
     queryKey: ['visits'],
@@ -65,6 +69,122 @@ export default function LeadsPage() {
       />
 
       <div className="p-6 space-y-6">
+        {/* Filters */}
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">الفلاتر</p>
+            {hasActiveFilters && (
+              <Btn size="sm" variant="outline" onClick={resetFilters}>
+                <X size={13}/> إلغاء الفلترة
+              </Btn>
+            )}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">اسم العميل</label>
+              <Input
+                placeholder="ابحث بالاسم..."
+                value={filters.name || ''}
+                onChange={e => setFilters(f => ({ ...f, name: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الميزانية من</label>
+              <Input
+                type="number"
+                value={filters.budget_min || ''}
+                onChange={e => setFilters(f => ({ ...f, budget_min: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الميزانية إلى</label>
+              <Input
+                type="number"
+                value={filters.budget_max || ''}
+                onChange={e => setFilters(f => ({ ...f, budget_max: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">نوع العقار</label>
+              <Select
+                options={[
+                  { value: '1', label: 'شقة' }, { value: '2', label: 'فلة' },
+                  { value: '3', label: 'عمارة' }, { value: '4', label: 'أرض' },
+                ]}
+                value={filters.property_type_id || ''}
+                onChange={e => setFilters(f => ({ ...f, property_type_id: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">التصنيف</label>
+              <Select
+                options={['جاد','استفسار','بحث'].map(v => ({ value: v, label: v }))}
+                value={filters.classification || ''}
+                onChange={e => setFilters(f => ({ ...f, classification: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">نسبة الجدية</label>
+              <Select
+                options={['1','2','3','4'].map(v => ({ value: v, label: v }))}
+                value={filters.seriousness_level || ''}
+                onChange={e => setFilters(f => ({ ...f, seriousness_level: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">مصدر الطلب</label>
+              <Select
+                options={SOURCES.map(v => ({ value: v, label: v }))}
+                value={filters.source || ''}
+                onChange={e => setFilters(f => ({ ...f, source: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ الإضافة</label>
+              <Input
+                type="date"
+                value={filters.date_from || ''}
+                onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ الإضافة</label>
+              <Input
+                type="date"
+                value={filters.date_to || ''}
+                onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ المتابعة</label>
+              <Input
+                type="date"
+                value={filters.follow_up_from || ''}
+                onChange={e => setFilters(f => ({ ...f, follow_up_from: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ المتابعة</label>
+              <Input
+                type="date"
+                value={filters.follow_up_to || ''}
+                onChange={e => setFilters(f => ({ ...f, follow_up_to: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           <StatCard label="إجمالي المهتمين" value={stats.total}        icon={<Users size={18}/>}         color="blue" />
