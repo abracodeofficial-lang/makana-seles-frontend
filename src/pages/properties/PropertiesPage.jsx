@@ -88,16 +88,8 @@ export default function PropertiesPage() {
       />
 
       <div className="p-6 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <StatCard label="إجمالي العقارات" value={stats.total}        icon={<Building2 size={18}/>} color="blue" />
-          <StatCard label="متاح"             value={stats.available}    icon={<CheckCircle size={18}/>} color="green" />
-          <StatCard label="محجوز"            value={stats.reserved}     icon={<Clock size={18}/>}       color="amber" />
-          <StatCard label="مباع"             value={stats.sold}         icon={<XCircle size={18}/>}     color="red" />
-        </div>
-
         {/* Filters */}
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-end gap-3">
           <Select
             options={['متاح','محجوز','مباع','قيد المراجعة'].map(v => ({ value: v, label: v }))}
             onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
@@ -111,6 +103,35 @@ export default function PropertiesPage() {
             onChange={e => setFilters(f => ({ ...f, property_type_id: e.target.value }))}
             className="text-xs py-1.5 w-32"
           />
+          <Input
+            placeholder="اسم المالك..."
+            onChange={e => setFilters(f => ({ ...f, owner_name: e.target.value }))}
+            className="text-xs py-1.5 w-40"
+          />
+          <div>
+            <label className="block text-[10px] text-gray-500 mb-1">من تاريخ</label>
+            <Input
+              type="date"
+              onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
+              className="text-xs py-1.5 w-36"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ</label>
+            <Input
+              type="date"
+              onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
+              className="text-xs py-1.5 w-36"
+            />
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4">
+          <StatCard label="إجمالي العقارات" value={stats.total}        icon={<Building2 size={18}/>} color="blue" />
+          <StatCard label="متاح"             value={stats.available}    icon={<CheckCircle size={18}/>} color="green" />
+          <StatCard label="محجوز"            value={stats.reserved}     icon={<Clock size={18}/>}       color="amber" />
+          <StatCard label="مباع"             value={stats.sold}         icon={<XCircle size={18}/>}     color="red" />
         </div>
 
         {/* Cards Grid */}
