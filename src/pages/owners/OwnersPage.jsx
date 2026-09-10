@@ -58,22 +58,22 @@ export default function OwnersPage() {
       <div className="p-6 space-y-6">
         {/* Filters */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ</label>
+              <label className="block text-[10px] text-gray-500 mb-1">اسم المالك</label>
               <Input
-                type="date"
-                value={filters.date_from || ''}
-                onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
+                placeholder="ابحث بالاسم..."
+                value={filters.name || ''}
+                onChange={e => setFilters(f => ({ ...f, name: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
             </div>
             <div>
-              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ</label>
-              <Input
-                type="date"
-                value={filters.date_to || ''}
-                onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
+              <label className="block text-[10px] text-gray-500 mb-1">المجموعة</label>
+              <Select
+                options={['A','B','C'].map(v => ({ value: v, label: `المجموعة ${v}` }))}
+                value={filters.group || ''}
+                onChange={e => setFilters(f => ({ ...f, group: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
             </div>
@@ -92,6 +92,42 @@ export default function OwnersPage() {
                 options={['مالك','وكيل','وسيط','مكتب','مطور','مشروع'].map(v => ({ value: v, label: v }))}
                 value={filters.type || ''}
                 onChange={e => setFilters(f => ({ ...f, type: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ الإضافة</label>
+              <Input
+                type="date"
+                value={filters.date_from || ''}
+                onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ الإضافة</label>
+              <Input
+                type="date"
+                value={filters.date_to || ''}
+                onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ تحديث السعر</label>
+              <Input
+                type="date"
+                value={filters.price_update_from || ''}
+                onChange={e => setFilters(f => ({ ...f, price_update_from: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ تحديث السعر</label>
+              <Input
+                type="date"
+                value={filters.price_update_to || ''}
+                onChange={e => setFilters(f => ({ ...f, price_update_to: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
             </div>
