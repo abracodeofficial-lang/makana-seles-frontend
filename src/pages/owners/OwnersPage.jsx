@@ -18,14 +18,15 @@ const TYPE_COLOR   = { مالك: 'blue', وكيل: 'teal', وسيط: 'purple', �
 export default function OwnersPage() {
   const qc = useQueryClient();
   const [search, setSearch]         = useState('');
+  const [filters, setFilters]       = useState({});
   const [showForm, setShowForm]     = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   const [showProps, setShowProps]   = useState(null);
   const [editing, setEditing]       = useState(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['owners', search],
-    queryFn: () => ownersApi.list({ search }).then(r => r.data),
+    queryKey: ['owners', search, filters],
+    queryFn: () => ownersApi.list({ search, ...filters }).then(r => r.data),
     staleTime: 30_000,
   });
 
@@ -55,6 +56,44 @@ export default function OwnersPage() {
       />
 
       <div className="p-6 space-y-6">
+        {/* Filters */}
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ</label>
+              <Input
+                type="date"
+                onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ</label>
+              <Input
+                type="date"
+                onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الحالة (حصري)</label>
+              <Select
+                options={['تم','لا','جاري','ملغي'].map(v => ({ value: v, label: v }))}
+                onChange={e => setFilters(f => ({ ...f, exclusive_status: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الصفة</label>
+              <Select
+                options={['مالك','وكيل','وسيط','مكتب','مطور','مشروع'].map(v => ({ value: v, label: v }))}
+                onChange={e => setFilters(f => ({ ...f, type: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-5 gap-4">
           <StatCard label="إجمالي الملاك" value={stats.total}       icon={<Users size={18}/>}     color="blue" />
