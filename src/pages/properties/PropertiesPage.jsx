@@ -89,40 +89,51 @@ export default function PropertiesPage() {
 
       <div className="p-6 space-y-6">
         {/* Filters */}
-        <div className="flex flex-wrap items-end gap-3">
-          <Select
-            options={['متاح','محجوز','مباع','قيد المراجعة'].map(v => ({ value: v, label: v }))}
-            onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
-            className="text-xs py-1.5 w-36"
-          />
-          <Select
-            options={[
-              { value: '1', label: 'شقة' }, { value: '2', label: 'فلة' },
-              { value: '3', label: 'عمارة' }, { value: '4', label: 'أرض' },
-            ]}
-            onChange={e => setFilters(f => ({ ...f, property_type_id: e.target.value }))}
-            className="text-xs py-1.5 w-32"
-          />
-          <Input
-            placeholder="اسم المالك..."
-            onChange={e => setFilters(f => ({ ...f, owner_name: e.target.value }))}
-            className="text-xs py-1.5 w-40"
-          />
-          <div>
-            <label className="block text-[10px] text-gray-500 mb-1">من تاريخ</label>
-            <Input
-              type="date"
-              onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
-              className="text-xs py-1.5 w-36"
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ</label>
-            <Input
-              type="date"
-              onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
-              className="text-xs py-1.5 w-36"
-            />
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">اسم المالك</label>
+              <Input
+                placeholder="ابحث باسم المالك..."
+                onChange={e => setFilters(f => ({ ...f, owner_name: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ</label>
+              <Input
+                type="date"
+                onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ</label>
+              <Input
+                type="date"
+                onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الحالة</label>
+              <Select
+                options={['متاح','محجوز','مباع','قيد المراجعة'].map(v => ({ value: v, label: v }))}
+                onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">نوع العقار</label>
+              <Select
+                options={[
+                  { value: '1', label: 'شقة' }, { value: '2', label: 'فلة' },
+                  { value: '3', label: 'عمارة' }, { value: '4', label: 'أرض' },
+                ]}
+                onChange={e => setFilters(f => ({ ...f, property_type_id: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
           </div>
         </div>
 
