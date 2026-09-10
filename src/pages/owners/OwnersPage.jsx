@@ -63,6 +63,7 @@ export default function OwnersPage() {
               <label className="block text-[10px] text-gray-500 mb-1">من تاريخ</label>
               <Input
                 type="date"
+                value={filters.date_from || ''}
                 onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
@@ -71,6 +72,7 @@ export default function OwnersPage() {
               <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ</label>
               <Input
                 type="date"
+                value={filters.date_to || ''}
                 onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
@@ -79,6 +81,7 @@ export default function OwnersPage() {
               <label className="block text-[10px] text-gray-500 mb-1">الحالة (حصري)</label>
               <Select
                 options={['تم','لا','جاري','ملغي'].map(v => ({ value: v, label: v }))}
+                value={filters.exclusive_status || ''}
                 onChange={e => setFilters(f => ({ ...f, exclusive_status: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
@@ -87,6 +90,7 @@ export default function OwnersPage() {
               <label className="block text-[10px] text-gray-500 mb-1">الصفة</label>
               <Select
                 options={['مالك','وكيل','وسيط','مكتب','مطور','مشروع'].map(v => ({ value: v, label: v }))}
+                value={filters.type || ''}
                 onChange={e => setFilters(f => ({ ...f, type: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />

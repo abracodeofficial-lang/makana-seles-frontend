@@ -95,6 +95,7 @@ export default function PropertiesPage() {
               <label className="block text-[10px] text-gray-500 mb-1">اسم المالك</label>
               <Input
                 placeholder="ابحث باسم المالك..."
+                value={filters.owner_name || ''}
                 onChange={e => setFilters(f => ({ ...f, owner_name: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
@@ -103,6 +104,7 @@ export default function PropertiesPage() {
               <label className="block text-[10px] text-gray-500 mb-1">من تاريخ</label>
               <Input
                 type="date"
+                value={filters.date_from || ''}
                 onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
@@ -111,6 +113,7 @@ export default function PropertiesPage() {
               <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ</label>
               <Input
                 type="date"
+                value={filters.date_to || ''}
                 onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
@@ -119,6 +122,7 @@ export default function PropertiesPage() {
               <label className="block text-[10px] text-gray-500 mb-1">الحالة</label>
               <Select
                 options={['متاح','محجوز','مباع','قيد المراجعة'].map(v => ({ value: v, label: v }))}
+                value={filters.status || ''}
                 onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
@@ -130,6 +134,7 @@ export default function PropertiesPage() {
                   { value: '1', label: 'شقة' }, { value: '2', label: 'فلة' },
                   { value: '3', label: 'عمارة' }, { value: '4', label: 'أرض' },
                 ]}
+                value={filters.property_type_id || ''}
                 onChange={e => setFilters(f => ({ ...f, property_type_id: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
