@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { leadsApi, visitsApi } from '../../api/services';
+import { leadsApi, visitsApi, employeesApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
   Textarea, SearchBox, Avatar, Card, Loading, InfoRow,
 } from '../../components/ui';
-import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X, UserCheck, Home } from 'lucide-react';
 
 const formatDate = (str) => {
   if (!str) return '—';
@@ -21,6 +21,11 @@ const CLASS_COLOR  = { جاد: 'green', استفسار: 'blue', بحث: 'gray' }
 const STATUS_COLOR = { مفتوح: 'green', مغلق: 'gray' };
 const FOLLOW_COLOR = { اليوم: 'amber', قادم: 'blue', متأخر: 'red' };
 const SOURCES = ['حراج','عقار','بيوت','ديل','موقع مكانة','مباشر','اتصال','تيك توك','سناب','تويتر','انستجرام','برودكاست','لوحة','يوتيوب','مجتمع','إعادة استهداف','سيتي سكيب','أخرى'];
+
+const OPERATION_STATUSES = ['يبغى تواصل هاتفي', 'عنده استفسارات أكثر', 'اهتمام مبدئي'];
+const SPECIALIST_STAGES  = ['تواصل', 'معلومات واستفسارات', 'زيارة', 'إقناع', 'تفاوض', 'تفاهم', 'حجز'];
+const OP_STATUS_COLOR    = { 'يبغى تواصل هاتفي': 'gray', 'عنده استفسارات أكثر': 'blue', 'اهتمام مبدئي': 'amber' };
+const STAGE_COLOR        = { تواصل: 'gray', 'معلومات واستفسارات': 'blue', زيارة: 'purple', إقناع: 'amber', تفاوض: 'amber', تفاهم: 'teal', حجز: 'green' };
 
 export default function LeadsPage() {
   const qc = useQueryClient();
@@ -195,7 +200,7 @@ export default function LeadsPage() {
 
         {/* Tabs */}
         <div className="flex bg-gray-800 rounded-lg p-1 w-fit">
-          {[['leads','قائمة المهتمين'],['visits','الزيارات المجدولة']].map(([key, label]) => (
+          {[['leads','قائمة المهتمين'],['visits','الزيارات المجدولة'],['operation','لوحة الأوبريشن']].map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)}
               className={`px-5 py-2 rounded-md text-sm font-semibold transition-all ${tab === key ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200'}`}>
               {label}
@@ -207,7 +212,7 @@ export default function LeadsPage() {
         {tab === 'leads' && (
           <Card title="قائمة المهتمين">
             {isLoading ? <Loading /> : (
-              <Table headers={['الكود','اسم العميل','الهاتف','نوع العقار','الميزانية','التصنيف','المتابعة','حالة الطلب','إجراءات']}>
+              <Table headers={['الكود','اسم العميل','الهاتف','نوع العقار','الميزانية','التصنيف','مرحلة الأوبريشن/الأخصائي','حالة الطلب','إجراءات']}>
                 {data?.data?.data?.map(lead => (
                   <Tr key={lead.id} onClick={() => setShowDetail(lead.id)}>
                     <Td><span className="text-blue-400 font-mono text-xs">{lead.lead_code}</span></Td>
@@ -224,8 +229,12 @@ export default function LeadsPage() {
                     </Td>
                     <Td><Badge label={lead.classification} color={CLASS_COLOR[lead.classification]}/></Td>
                     <Td>
-                      {lead.follow_up_date && (
-                        <Badge label={lead.follow_up_status_computed || '—'} color={FOLLOW_COLOR[lead.follow_up_status_computed] || 'gray'} />
+                      {lead.broker_employee_id ? (
+                        <Badge label={lead.specialist_stage || 'تواصل'} color={STAGE_COLOR[lead.specialist_stage] || 'gray'} />
+                      ) : lead.operation_status ? (
+                        <Badge label={lead.operation_status} color={OP_STATUS_COLOR[lead.operation_status] || 'gray'} />
+                      ) : (
+                        <span className="text-gray-600 text-xs">—</span>
                       )}
                     </Td>
                     <Td><Badge label={lead.request_status} color={STATUS_COLOR[lead.request_status]}/></Td>
@@ -265,6 +274,9 @@ export default function LeadsPage() {
             </Table>
           </Card>
         )}
+
+        {/* Operation Dashboard */}
+        {tab === 'operation' && <OperationDashboard />}
       </div>
 
       <LeadForm open={showForm} onClose={() => setShowForm(false)} editing={editing} />
@@ -348,7 +360,9 @@ function LeadForm({ open, onClose, editing }) {
 
 function LeadDetail({ id, onClose }) {
   const qc = useQueryClient();
-  const [showVisitForm, setShowVisitForm] = useState(false);
+  const [showVisitForm, setShowVisitForm]   = useState(false);
+  const [showAssignForm, setShowAssignForm] = useState(false);
+  const [showAmountModal, setShowAmountModal] = useState(false);
   const [visitForm, setVisitForm]         = useState({ location: '', visit_date: '', visit_time: '', notes: '' });
 
   const { data, isLoading } = useQuery({
@@ -356,12 +370,28 @@ function LeadDetail({ id, onClose }) {
     queryFn: () => leadsApi.show(id).then(r => r.data.data),
   });
 
+  const invalidate = () => { qc.invalidateQueries(['lead', id]); qc.invalidateQueries(['leads']); };
+
   const visitMut = useMutation({
     mutationFn: (data) => visitsApi.create({ ...data, lead_id: id }),
     onSuccess: () => {
       toast.success('تم حجز الزيارة');
       qc.invalidateQueries(['visits']);
       setShowVisitForm(false);
+    },
+  });
+
+  const opStatusMut = useMutation({
+    mutationFn: (operation_status) => leadsApi.updateOperationStatus(id, { operation_status }),
+    onSuccess: () => { toast.success('تم تحديث حالة الأوبريشن'); invalidate(); },
+  });
+
+  const stageMut = useMutation({
+    mutationFn: (payload) => leadsApi.updateSpecialistStage(id, payload),
+    onSuccess: () => { toast.success('تم تحديث مرحلة الأخصائي'); invalidate(); },
+    onError:   (err) => {
+      const errors = err.response?.data?.errors;
+      if (errors) Object.values(errors).flat().forEach(e => toast.error(e));
     },
   });
 
@@ -373,6 +403,9 @@ function LeadDetail({ id, onClose }) {
       footer={
         <>
           <Btn onClick={() => setShowVisitForm(true)}><Calendar size={14}/> حجز زيارة</Btn>
+          {!l.broker_employee_id && (
+            <Btn variant="outline" onClick={() => setShowAssignForm(true)}><UserCheck size={14}/> تحويل لأخصائي</Btn>
+          )}
           <Btn variant="outline" onClick={onClose}>إغلاق</Btn>
         </>
       }>
@@ -391,9 +424,48 @@ function LeadDetail({ id, onClose }) {
       <InfoRow label="المصدر"          value={l.source} />
       <InfoRow label="الميزانية"       value={l.budget ? `${Number(l.budget).toLocaleString('ar-SA-u-nu-latn')} ريال` : '—'} valueClass="text-blue-400" />
       <InfoRow label="هدف الشراء"     value={l.purchase_goal} />
-      <InfoRow label="الموظف المسؤول" value={l.operation_employee?.full_name} />
+      <InfoRow label="موظف الأوبريشن" value={l.operation_employee?.full_name} />
       <InfoRow label="آخر تحديث"      value={l.update_status} />
       <InfoRow label="ملاحظات"        value={l.update_notes} />
+
+      {/* رحلة المهتم: الأوبريشن ← الأخصائي */}
+      <div className="mt-4 p-4 bg-gray-800 rounded-xl">
+        {!l.broker_employee_id ? (
+          <>
+            <p className="text-xs font-semibold text-gray-400 uppercase mb-2">حالة الأوبريشن</p>
+            <div className="flex flex-wrap gap-2">
+              {OPERATION_STATUSES.map(status => (
+                <button key={status} onClick={() => opStatusMut.mutate(status)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors
+                    ${l.operation_status === status
+                      ? 'bg-blue-500/15 border-blue-500 text-blue-300'
+                      : 'border-gray-700 text-gray-400 hover:border-gray-600'}`}>
+                  {status}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase">مرحلة الأخصائي</p>
+              <span className="text-xs text-gray-500">الأخصائي: {l.broker_employee?.full_name || '—'}</span>
+            </div>
+            <SpecialistStepper
+              current={l.specialist_stage || 'تواصل'}
+              onSelect={(stage) => {
+                if (stage === 'حجز') setShowAmountModal(true);
+                else stageMut.mutate({ specialist_stage: stage });
+              }}
+            />
+            {l.specialist_stage === 'حجز' && l.agreed_amount && (
+              <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-sm text-green-300 font-semibold">
+                المبلغ المتفق عليه: {Number(l.agreed_amount).toLocaleString('ar-SA-u-nu-latn')} ريال
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {l.visits?.length > 0 && (
         <div className="mt-4">
@@ -422,6 +494,143 @@ function LeadDetail({ id, onClose }) {
           </div>
         </div>
       )}
+
+      {showAssignForm && (
+        <AssignSpecialistModal
+          leadId={id}
+          onClose={() => setShowAssignForm(false)}
+          onAssigned={() => { invalidate(); setShowAssignForm(false); }}
+        />
+      )}
+
+      {showAmountModal && (
+        <AgreedAmountModal
+          defaultValue={l.agreed_amount}
+          loading={stageMut.isPending}
+          onClose={() => setShowAmountModal(false)}
+          onConfirm={(amount) => stageMut.mutate(
+            { specialist_stage: 'حجز', agreed_amount: amount },
+            { onSuccess: () => setShowAmountModal(false) }
+          )}
+        />
+      )}
     </Modal>
+  );
+}
+
+function SpecialistStepper({ current, onSelect }) {
+  const currentIndex = SPECIALIST_STAGES.indexOf(current);
+  return (
+    <div className="flex flex-wrap gap-2">
+      {SPECIALIST_STAGES.map((stage, i) => (
+        <button key={stage} onClick={() => onSelect(stage)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors
+            ${stage === current
+              ? 'bg-blue-500/15 border-blue-500 text-blue-300'
+              : i < currentIndex
+                ? 'border-gray-700 text-gray-500 hover:border-gray-600'
+                : 'border-gray-700 text-gray-400 hover:border-gray-600'}`}>
+          {stage}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AssignSpecialistModal({ leadId, onClose, onAssigned }) {
+  const [specialistId, setSpecialistId] = useState('');
+
+  const { data: employeesData, isLoading } = useQuery({
+    queryKey: ['employees-all'],
+    queryFn:  () => employeesApi.list({ per_page: 200, status: 'نشط' }).then(r => r.data),
+  });
+  const employees = employeesData?.data?.data || [];
+
+  const mut = useMutation({
+    mutationFn: () => leadsApi.assignSpecialist(leadId, { broker_employee_id: specialistId }),
+    onSuccess: () => { toast.success('تم تحويل المهتم للأخصائي'); onAssigned(); },
+    onError:   (err) => {
+      const errors = err.response?.data?.errors;
+      if (errors) Object.values(errors).flat().forEach(e => toast.error(e));
+    },
+  });
+
+  return (
+    <Modal open onClose={onClose} title="تحويل المهتم لأخصائي"
+      footer={
+        <>
+          <Btn onClick={() => { if (!specialistId) { toast.error('اختر الأخصائي'); return; } mut.mutate(); }} loading={mut.isPending}>
+            <UserCheck size={14}/> تحويل
+          </Btn>
+          <Btn variant="outline" onClick={onClose}>إلغاء</Btn>
+        </>
+      }>
+      {isLoading ? <Loading /> : (
+        <Select label="اختر الأخصائي *" value={specialistId} onChange={e => setSpecialistId(e.target.value)}
+          options={employees.map(e => ({ value: String(e.id), label: e.full_name }))} />
+      )}
+    </Modal>
+  );
+}
+
+function AgreedAmountModal({ defaultValue, onClose, onConfirm, loading }) {
+  const [amount, setAmount] = useState(defaultValue || '');
+
+  return (
+    <Modal open onClose={onClose} title="المبلغ المتفق عليه"
+      footer={
+        <>
+          <Btn onClick={() => {
+            if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) { toast.error('أدخل مبلغاً صحيحاً'); return; }
+            onConfirm(Number(amount));
+          }} loading={loading}>💾 تأكيد الحجز</Btn>
+          <Btn variant="outline" onClick={onClose}>إلغاء</Btn>
+        </>
+      }>
+      <p className="text-xs text-gray-500 mb-3">سيتم إرسال إشعار للمالية بمجرد التأكيد.</p>
+      <Input label="المبلغ (ريال) *" type="number" value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
+    </Modal>
+  );
+}
+
+function OperationDashboard() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['operation-dashboard'],
+    queryFn:  () => leadsApi.operationDashboard().then(r => r.data),
+  });
+  const items = data?.data || [];
+
+  if (isLoading) return <Card title="لوحة الأوبريشن"><Loading /></Card>;
+
+  return (
+    <Card title="لوحة الأوبريشن — العدد النشط لكل موظف">
+      {items.length === 0 ? (
+        <p className="text-center py-10 text-gray-500 text-sm">لا توجد بيانات بعد</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {items.map(emp => (
+            <div key={emp.employee_id} className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Avatar name={emp.full_name} size="sm" />
+                <p className="font-semibold text-gray-100 text-sm">{emp.full_name}</p>
+              </div>
+              {emp.property_types?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {emp.property_types.map(pt => <Badge key={pt} label={pt} color="gray" />)}
+                </div>
+              )}
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1.5 text-gray-400"><Users size={14}/> مهتمون نشطون</span>
+                <span className="font-bold text-blue-400">{emp.active_leads_count}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm mt-1.5">
+                <span className="flex items-center gap-1.5 text-gray-400"><Home size={14}/> ملاك نشطون</span>
+                <span className="font-bold text-green-400">{emp.active_owners_count}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }

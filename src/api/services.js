@@ -33,12 +33,16 @@ export const propertiesApi = {
 
 // ── LEADS
 export const leadsApi = {
-  list:         (params)   => client.get('/leads', { params }),
-  show:         (id)       => client.get(`/leads/${id}`),
-  create:       (data)     => client.post('/leads', data),
-  update:       (id, data) => client.put(`/leads/${id}`, data),
-  delete:       (id)       => client.delete(`/leads/${id}`),
-  updateStatus: (id, data) => client.patch(`/leads/${id}/status`, data),
+  list:               (params)   => client.get('/leads', { params }),
+  show:               (id)       => client.get(`/leads/${id}`),
+  create:             (data)     => client.post('/leads', data),
+  update:             (id, data) => client.put(`/leads/${id}`, data),
+  delete:             (id)       => client.delete(`/leads/${id}`),
+  updateStatus:       (id, data) => client.patch(`/leads/${id}/status`, data),
+  updateOperationStatus: (id, data) => client.patch(`/leads/${id}/operation-status`, data),
+  assignSpecialist:      (id, data) => client.patch(`/leads/${id}/assign-specialist`, data),
+  updateSpecialistStage: (id, data) => client.patch(`/leads/${id}/specialist-stage`, data),
+  operationDashboard:    ()         => client.get('/leads/operation-dashboard'),
 };
 
 // ── VISITS
@@ -139,6 +143,14 @@ export const lookupApi = {
   hr:                  ()        => client.get('/lookup/hr'),
   leaveTypes:          ()        => client.get('/lookups/leave-types'),
   permissionDurations: ()        => client.get('/lookups/permission-durations'),
+  propertyTypes:       ()        => client.get('/lookups/property-types'),
+};
+
+// ── تخصيص موظفي الأوبريشن لأنواع العقارات
+export const operationAssignmentsApi = {
+  list:   ()       => client.get('/lookups/operation-assignments'),
+  create: (data)   => client.post('/lookups/operation-assignments', data),
+  delete: (id)     => client.delete(`/lookups/operation-assignments/${id}`),
 };
 
 // ── NOTIFICATIONS

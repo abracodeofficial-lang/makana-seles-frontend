@@ -4,12 +4,13 @@ import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { PageHeader } from '../../components/layout/Layout';
 import { Btn, Badge, Card, Modal, Input, Select, Table, Tr, Td, Loading } from '../../components/ui';
-import { Plus, Pencil, Trash2, MapPin, Building2, Clock, Calendar, Settings, Timer } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Building2, Clock, Calendar, Settings, Timer, Users } from 'lucide-react';
 
 // ── التبويبات ─────────────────────────────────────────────────
 const TABS = [
   { id: 'cities',          label: 'المدن والأحياء',   icon: MapPin      },
   { id: 'prop-types',      label: 'أنواع العقارات',   icon: Building2   },
+  { id: 'operation-assign', label: 'تخصيص الأوبريشن', icon: Users       },
   { id: 'shifts',          label: 'الشفتات',           icon: Clock       },
   { id: 'leave-types',     label: 'أنواع الإجازات',   icon: Calendar    },
   { id: 'perm-durations',  label: 'مدد الإذونات',     icon: Timer       },
@@ -49,6 +50,7 @@ export default function SettingsPage() {
           <div className="p-4 sm:p-6">
             {tab === 'cities'         && <TabCities />}
             {tab === 'prop-types'     && <TabPropertyTypes />}
+            {tab === 'operation-assign' && <TabOperationAssignments />}
             {tab === 'shifts'         && <TabShifts />}
             {tab === 'leave-types'    && <TabLeaveTypes />}
             {tab === 'perm-durations' && <TabPermissionDurations />}
@@ -353,6 +355,99 @@ function PropertyTypeFormModal({ item, onClose, onSaved }) {
           checked={form.is_active}
           onChange={v => set('is_active', v)}
         />
+      </div>
+    </Modal>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// تبويب: تخصيص الأوبريشن (نوع العقار ↔ موظف الأوبريشن)
+// ══════════════════════════════════════════════════════════════
+function TabOperationAssignments() {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['operation-assignments'],
+    queryFn:  () => client.get('/lookups/operation-assignments').then(r => r.data),
+  });
+  const items = data?.data || [];
+
+  const deleteMut = useMutation({
+    mutationFn: (id) => client.delete(`/lookups/operation-assignments/${id}`),
+    onSuccess:  () => { toast.success('تم الحذف'); qc.invalidateQueries({ queryKey: ['operation-assignments'] }); },
+    onError:    () => toast.error('فشل الحذف'),
+  });
+
+  return (
+    <div>
+      <SectionHeader label="تخصيص موظفي الأوبريشن لأنواع العقارات" onAdd={() => setShowForm(true)} addLabel="إضافة تخصيص" />
+      <p className="text-xs text-gray-500 mb-4">
+        يحدد هذا الجدول مين من موظفي الأوبريشن مسؤول عن كل نوع عقار — قابل للتعديل بالكامل هنا، ويمكن لنفس الموظف أن يُسند إليه أكثر من نوع.
+      </p>
+
+      {isLoading ? <Loading /> : items.length === 0 ? <EmptyState msg="لا توجد تخصيصات مضافة بعد" /> : (
+        <Table headers={['نوع العقار', 'موظف الأوبريشن', 'إجراءات']}>
+          {items.map(item => (
+            <Tr key={item.id}>
+              <Td className="font-semibold text-gray-200">{item.property_type?.name || '—'}</Td>
+              <Td className="text-gray-300">{item.employee?.full_name || '—'}</Td>
+              <Td>
+                <Btn size="sm" variant="ghost" onClick={() => { if (confirm('حذف هذا التخصيص؟')) deleteMut.mutate(item.id); }}
+                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                  <Trash2 size={12}/>
+                </Btn>
+              </Td>
+            </Tr>
+          ))}
+        </Table>
+      )}
+
+      {showForm && (
+        <OperationAssignmentFormModal
+          onClose={() => setShowForm(false)}
+          onSaved={() => { qc.invalidateQueries({ queryKey: ['operation-assignments'] }); setShowForm(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function OperationAssignmentFormModal({ onClose, onSaved }) {
+  const [form, setForm] = useState({ employee_id: '', property_type_id: '' });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const { data: employeesData } = useQuery({
+    queryKey: ['employees-all'],
+    queryFn:  () => client.get('/employees', { params: { per_page: 200, status: 'نشط' } }).then(r => r.data),
+  });
+  const employees = employeesData?.data?.data || [];
+
+  const { data: typesData } = useQuery({
+    queryKey: ['property-types'],
+    queryFn:  () => client.get('/lookups/property-types').then(r => r.data),
+  });
+  const propertyTypes = typesData?.data || [];
+
+  const mut = useMutation({
+    mutationFn: (d) => client.post('/lookups/operation-assignments', d),
+    onSuccess: () => { toast.success('تمت إضافة التخصيص'); onSaved(); },
+    onError:   (err) => handleFormError(err),
+  });
+
+  return (
+    <Modal open onClose={onClose} title="إضافة تخصيص أوبريشن"
+      footer={<FormFooter onSave={() => {
+        if (!form.employee_id)      { toast.error('اختر موظف الأوبريشن'); return; }
+        if (!form.property_type_id) { toast.error('اختر نوع العقار'); return; }
+        mut.mutate(form);
+      }} loading={mut.isPending} onClose={onClose} />}
+    >
+      <div className="space-y-4">
+        <Select label="موظف الأوبريشن *" value={form.employee_id} onChange={e => set('employee_id', e.target.value)}
+          options={employees.map(e => ({ value: String(e.id), label: e.full_name }))} />
+        <Select label="نوع العقار *" value={form.property_type_id} onChange={e => set('property_type_id', e.target.value)}
+          options={propertyTypes.map(t => ({ value: String(t.id), label: t.name }))} />
       </div>
     </Modal>
   );
