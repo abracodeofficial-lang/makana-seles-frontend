@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://lightpink-pigeon-633801.hostingersite.com',
+        target: 'https://system.makanasa.com',
         changeOrigin: true,
       },
     },

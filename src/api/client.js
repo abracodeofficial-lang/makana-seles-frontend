@@ -2,7 +2,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const client = axios.create({
-  baseURL: 'https://lightpink-pigeon-633801.hostingersite.com/api',
+  baseURL: '/api',
   headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
 });
 
