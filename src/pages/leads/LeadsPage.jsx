@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { leadsApi, visitsApi, employeesApi } from '../../api/services';
+import { leadsApi, visitsApi, employeesApi, lookupApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
@@ -289,6 +289,7 @@ const LEAD_DEFAULTS = {
   name: '', phone: '', applicant_type: 'مهتم', source: 'مباشر',
   classification: 'استفسار', seriousness_level: '1',
   purchase_goal: 'سكن', request_status: 'مفتوح',
+  property_type_id: '', operation_employee_id: '',
 };
 
 function LeadForm({ open, onClose, editing }) {
@@ -297,11 +298,55 @@ function LeadForm({ open, onClose, editing }) {
   const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  const { data: typesData } = useQuery({
+    queryKey: ['property-types'],
+    queryFn:  () => lookupApi.propertyTypes().then(r => r.data),
+    enabled:  open,
+  });
+  const propertyTypes = typesData?.data || [];
+
+  const { data: assignData } = useQuery({
+    queryKey: ['operation-assignments'],
+    queryFn:  () => operationAssignmentsApi.list().then(r => r.data),
+    enabled:  open,
+  });
+  const assignments = assignData?.data || [];
+
+  const { data: employeesData } = useQuery({
+    queryKey: ['employees-all'],
+    queryFn:  () => employeesApi.list({ per_page: 200, status: 'نشط' }).then(r => r.data),
+    enabled:  open,
+  });
+  const allEmployees = employeesData?.data?.data || [];
+
+  // موظفو الأوبريشن المسؤولون عن نوع العقار المختار (حسب تخصيص الإعدادات)
+  const operationEmployeesForType = form.property_type_id
+    ? [...new Map(
+        assignments
+          .filter(a => String(a.property_type_id) === String(form.property_type_id))
+          .map(a => [a.employee_id, a.employee])
+      ).values()]
+    : [];
+  const operationEmployeeOptions = (operationEmployeesForType.length > 0 ? operationEmployeesForType : allEmployees)
+    .map(e => ({ value: String(e.id), label: e.full_name }));
+
+  const handlePropertyTypeChange = (value) => {
+    const matches = assignments.filter(a => String(a.property_type_id) === value);
+    const uniqueEmployeeIds = [...new Set(matches.map(a => String(a.employee_id)))];
+    setForm(f => ({
+      ...f,
+      property_type_id: value,
+      operation_employee_id: uniqueEmployeeIds.length === 1 ? uniqueEmployeeIds[0] : f.operation_employee_id,
+    }));
+  };
+
   useEffect(() => {
     if (open) {
       setForm(editing ? {
         ...LEAD_DEFAULTS,
         ...editing,
+        property_type_id:      editing.property_type_id      != null ? String(editing.property_type_id)      : '',
+        operation_employee_id: editing.operation_employee_id != null ? String(editing.operation_employee_id) : '',
         follow_up_date: toDateInput(editing.follow_up_date),
       } : LEAD_DEFAULTS);
     }
@@ -340,6 +385,10 @@ function LeadForm({ open, onClose, editing }) {
           options={['مهتم','مشتري','مستأجر','وسيط','وكيل','مطور'].map(v => ({ value: v, label: v }))} />
         <Select label="مصدر الطلب"      value={form.source}            onChange={e => set('source', e.target.value)}
           options={SOURCES.map(v => ({ value: v, label: v }))} />
+        <Select label="نوع العقار"       value={form.property_type_id} onChange={e => handlePropertyTypeChange(e.target.value)}
+          options={propertyTypes.map(t => ({ value: String(t.id), label: t.name }))} />
+        <Select label="موظف الأوبريشن"  value={form.operation_employee_id} onChange={e => set('operation_employee_id', e.target.value)}
+          options={operationEmployeeOptions} />
         <Input  label="الميزانية (ريال)" value={form.budget || ''}     onChange={e => set('budget', e.target.value)} type="number" />
         <Select label="فئة السعر"        value={form.price_category || ''} onChange={e => set('price_category', e.target.value)}
           options={['أقل من 4M','بين 4-10M','أعلى من 10M'].map(v => ({ value: v, label: v }))} />
