@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { attendanceApi, employeesApi } from '../../api/services';
+import { attendanceApi, employeesApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Card, Modal, Input, Select,
@@ -10,7 +10,7 @@ import {
 } from '../../components/ui';
 import {
   UserCheck, Clock, UserX, Palmtree,
-  Pencil, Plus, Download, RefreshCw, MessageSquare,
+  Pencil, Plus, Download, RefreshCw, MessageSquare, X,
 } from 'lucide-react';
 
 // ── ثوابت ────────────────────────────────────────────────────
@@ -87,23 +87,48 @@ const calcHours = (checkIn, checkOut) => {
 // ── الصفحة الرئيسية ──────────────────────────────────────────
 export default function AttendancePage() {
   const qc = useQueryClient();
-  const [date,      setDate]      = useState(todayISO());
+  const [dateFrom,  setDateFrom]  = useState(todayISO());
+  const [dateTo,    setDateTo]    = useState(todayISO());
   const [search,    setSearch]    = useState('');
+  const [departmentId, setDepartmentId] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [shiftId,      setShiftId]      = useState('');
   const [showForm,  setShowForm]  = useState(false);
   const [editRecord, setEditRecord] = useState(null);
   const [exportRange, setExportRange] = useState({ from: todayISO(), to: todayISO() });
   const [showExport,  setShowExport]  = useState(false);
   const [viewUpdate,  setViewUpdate]  = useState(null);
 
+  const { data: hrData } = useQuery({
+    queryKey: ['hr-lookup'],
+    queryFn:  () => lookupApi.hr().then(r => r.data),
+    staleTime: 5 * 60_000,
+  });
+  const departments = hrData?.departments || [];
+  const shifts      = hrData?.shifts      || [];
+
+  const resetFilters = () => {
+    setDateFrom(todayISO()); setDateTo(todayISO());
+    setSearch(''); setDepartmentId(''); setStatusFilter(''); setShiftId('');
+  };
+  const hasActiveFilters = search || departmentId || statusFilter || shiftId
+    || dateFrom !== todayISO() || dateTo !== todayISO();
+
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['attendance', date, search],
-    queryFn: () => attendanceApi.list({ date, search }).then(r => r.data),
+    queryKey: ['attendance', dateFrom, dateTo, search, departmentId, statusFilter, shiftId],
+    queryFn: () => attendanceApi.list({
+      date_from: dateFrom, date_to: dateTo, search,
+      department_id: departmentId || undefined,
+      status:        statusFilter || undefined,
+      shift_id:      shiftId      || undefined,
+    }).then(r => r.data),
     staleTime: 30_000,
   });
 
   const stats       = data?.stats        || {};
   const records     = data?.data         || [];
   const autoUpdated = data?.auto_updated || [];
+  const rangeLabel  = dateFrom === dateTo ? fmtDate(dateFrom) : `${fmtDate(dateFrom)} — ${fmtDate(dateTo)}`;
 
   const handleExport = async () => {
     try {
@@ -150,11 +175,6 @@ export default function AttendancePage() {
         actions={
           <>
             <SearchBox value={search} onChange={setSearch} placeholder="بحث باسم الموظف..." />
-            <Input
-              type="date" value={date}
-              onChange={e => setDate(e.target.value)}
-              className="text-xs py-1.5 w-40"
-            />
             <Btn variant="outline" onClick={() => setShowExport(true)}>
               <Download size={14}/> تصدير
             </Btn>
@@ -167,6 +187,43 @@ export default function AttendancePage() {
 
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
 
+        {/* الفلاتر */}
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">الفلاتر</p>
+            {hasActiveFilters && (
+              <Btn size="sm" variant="outline" onClick={resetFilters}>
+                <X size={13}/> إلغاء الفلترة
+              </Btn>
+            )}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ</label>
+              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="text-xs py-1.5 w-full" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ</label>
+              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="text-xs py-1.5 w-full" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">القسم</label>
+              <Select value={departmentId} onChange={e => setDepartmentId(e.target.value)} className="text-xs py-1.5 w-full"
+                options={departments.map(d => ({ value: String(d.id), label: d.name }))} />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الحالة</label>
+              <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="text-xs py-1.5 w-full"
+                options={['حاضر', 'متأخر', 'غياب', 'إجازة'].map(v => ({ value: v, label: v }))} />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الشيفت</label>
+              <Select value={shiftId} onChange={e => setShiftId(e.target.value)} className="text-xs py-1.5 w-full"
+                options={shifts.map(s => ({ value: String(s.id), label: s.name }))} />
+            </div>
+          </div>
+        </div>
+
         {/* إحصائيات */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <StatCard label="حاضرون"   value={stats.present  || 0} icon={<UserCheck size={18}/>} color="green" />
@@ -177,7 +234,7 @@ export default function AttendancePage() {
 
         {/* شريط التاريخ */}
         <div className="flex items-center gap-2 text-sm text-gray-400">
-          <span className="font-semibold text-gray-200">{fmtDate(date)}</span>
+          <span className="font-semibold text-gray-200">{rangeLabel}</span>
           <span>·</span>
           <span>{records.length} سجل</span>
           <button
@@ -189,9 +246,9 @@ export default function AttendancePage() {
         </div>
 
         {/* جدول الحضور */}
-        <Card title={`سجلات حضور ${fmtDate(date)}`}>
+        <Card title={`سجلات حضور ${rangeLabel}`}>
           {isLoading ? <Loading /> : records.length === 0 ? (
-            <p className="text-center text-gray-500 py-10 text-sm">لا توجد سجلات لهذا اليوم</p>
+            <p className="text-center text-gray-500 py-10 text-sm">لا توجد سجلات لهذه الفترة</p>
           ) : (
             <Table headers={['الموظف', 'القسم', 'وقت الدخول', 'وقت الخروج', 'ساعات العمل', 'التأخير', 'الحالة', 'التحديث اليومي', 'تعديل']}>
               {records.map(rec => {
@@ -290,7 +347,7 @@ export default function AttendancePage() {
       {showForm && (
         <AttendanceForm
           record={editRecord}
-          defaultDate={date}
+          defaultDate={dateFrom}
           onClose={() => { setShowForm(false); setEditRecord(null); }}
           onSaved={() => {
             qc.invalidateQueries(['attendance']);
