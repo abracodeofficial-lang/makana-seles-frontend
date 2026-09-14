@@ -105,7 +105,7 @@ const deviceNow = () => {
 export const punchApi = {
   today:      ()       => client.get('/punch/today', { params: deviceNow() }),
   checkIn:    ()       => client.post('/punch/check-in', deviceNow()),
-  checkOut:   ()       => client.post('/punch/check-out', deviceNow()),
+  checkOut:   (data = {}) => client.post('/punch/check-out', { ...deviceNow(), ...data }),
   breakStart: ()       => client.post('/punch/break-start', deviceNow()),
   breakEnd:   ()       => client.post('/punch/break-end', deviceNow()),
   history:    (params) => client.get('/punch/history', { params }),

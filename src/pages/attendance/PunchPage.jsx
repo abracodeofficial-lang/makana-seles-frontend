@@ -98,6 +98,7 @@ export default function PunchPage() {
   const qc = useQueryClient();
   const [showLeaveForm,      setShowLeaveForm]      = useState(false);
   const [showPermissionForm, setShowPermissionForm] = useState(false);
+  const [showCheckOutForm,   setShowCheckOutForm]   = useState(false);
   const [historyMonth,       setHistoryMonth]       = useState(
     new Date().toISOString().slice(0, 7)
   );
@@ -132,7 +133,7 @@ export default function PunchPage() {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const checkInMut    = makeMutation(() => punchApi.checkIn(),    'تم تسجيل الحضور');
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const checkOutMut   = makeMutation(() => punchApi.checkOut(),   'تم تسجيل الانصراف');
+  const checkOutMut   = makeMutation((data) => punchApi.checkOut(data), 'تم تسجيل الانصراف');
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const breakStartMut = makeMutation(() => punchApi.breakStart(), 'تم تسجيل بدء الاستراحة');
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -266,7 +267,7 @@ export default function PunchPage() {
               label="انصراف"
               icon={<LogOut size={22}/>}
               color="red"
-              onClick={() => checkOutMut.mutate()}
+              onClick={() => setShowCheckOutForm(true)}
               loading={checkOutMut.isPending}
               disabled={!checkedIn || checkedOut}
             />
@@ -401,7 +402,42 @@ export default function PunchPage() {
           onSaved={() => setShowLeaveForm(false)}
         />
       )}
+
+      {/* Modal التحديث اليومي عند الانصراف */}
+      {showCheckOutForm && (
+        <DailyUpdateModal
+          loading={checkOutMut.isPending}
+          onClose={() => setShowCheckOutForm(false)}
+          onConfirm={(daily_update) => checkOutMut.mutate(
+            { daily_update },
+            { onSuccess: () => setShowCheckOutForm(false) }
+          )}
+        />
+      )}
     </div>
+  );
+}
+
+// ── Modal: التحديث اليومي (إلزامي عند الانصراف) ──────────────
+function DailyUpdateModal({ onClose, onConfirm, loading }) {
+  const [text, setText] = useState('');
+
+  return (
+    <Modal open onClose={onClose} title="التحديث اليومي قبل الانصراف"
+      footer={
+        <>
+          <Btn onClick={() => {
+            if (!text.trim()) { toast.error('التحديث اليومي مطلوب قبل تسجيل الانصراف'); return; }
+            onConfirm(text.trim());
+          }} loading={loading}><LogOut size={14}/> تسجيل الانصراف</Btn>
+          <Btn variant="outline" onClick={onClose}>إلغاء</Btn>
+        </>
+      }>
+      <p className="text-xs text-gray-500 mb-3">اكتبي/اكتب ملخصاً عن شغلك اليوم — بيشوفه المدير والموارد البشرية.</p>
+      <Textarea label="التحديث اليومي *" value={text}
+        onChange={e => setText(e.target.value)}
+        rows={5} placeholder="شو سويت اليوم؟"/>
+    </Modal>
   );
 }
 

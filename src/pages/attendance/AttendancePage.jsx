@@ -10,7 +10,7 @@ import {
 } from '../../components/ui';
 import {
   UserCheck, Clock, UserX, Palmtree,
-  Pencil, Plus, Download, RefreshCw,
+  Pencil, Plus, Download, RefreshCw, MessageSquare,
 } from 'lucide-react';
 
 // ── ثوابت ────────────────────────────────────────────────────
@@ -93,6 +93,7 @@ export default function AttendancePage() {
   const [editRecord, setEditRecord] = useState(null);
   const [exportRange, setExportRange] = useState({ from: todayISO(), to: todayISO() });
   const [showExport,  setShowExport]  = useState(false);
+  const [viewUpdate,  setViewUpdate]  = useState(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['attendance', date, search],
@@ -192,7 +193,7 @@ export default function AttendancePage() {
           {isLoading ? <Loading /> : records.length === 0 ? (
             <p className="text-center text-gray-500 py-10 text-sm">لا توجد سجلات لهذا اليوم</p>
           ) : (
-            <Table headers={['الموظف', 'القسم', 'وقت الدخول', 'وقت الخروج', 'ساعات العمل', 'التأخير', 'الحالة', 'تعديل']}>
+            <Table headers={['الموظف', 'القسم', 'وقت الدخول', 'وقت الخروج', 'ساعات العمل', 'التأخير', 'الحالة', 'التحديث اليومي', 'تعديل']}>
               {records.map(rec => {
                 const delay = formatDelay(rec.late_minutes);
                 return (
@@ -230,6 +231,17 @@ export default function AttendancePage() {
                         label={STATUS_MAP[rec.status]?.label || rec.status}
                         color={STATUS_MAP[rec.status]?.color || 'gray'}
                       />
+                    </Td>
+                    <Td>
+                      {rec.daily_update ? (
+                        <button onClick={() => setViewUpdate(rec)}
+                          className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 max-w-[180px]">
+                          <MessageSquare size={12} className="flex-shrink-0"/>
+                          <span className="truncate">{rec.daily_update}</span>
+                        </button>
+                      ) : (
+                        <span className="text-gray-600 text-xs">لم يُضف</span>
+                      )}
                     </Td>
                     <Td>
                       <Btn size="sm" variant="ghost"
@@ -307,6 +319,23 @@ export default function AttendancePage() {
             <Input label="إلى تاريخ" type="date" value={exportRange.to}
               onChange={e => setExportRange(r => ({ ...r, to: e.target.value }))} />
           </div>
+        </Modal>
+      )}
+
+      {/* Modal عرض التحديث اليومي */}
+      {viewUpdate && (
+        <Modal open onClose={() => setViewUpdate(null)} title="التحديث اليومي"
+          footer={<Btn variant="outline" onClick={() => setViewUpdate(null)}>إغلاق</Btn>}>
+          <div className="flex items-center gap-2 mb-3">
+            <Avatar name={viewUpdate.employee?.full_name} size="sm" />
+            <div>
+              <p className="text-sm font-semibold text-gray-100">{viewUpdate.employee?.full_name}</p>
+              <p className="text-xs text-gray-500">{fmtDate(viewUpdate.date)}</p>
+            </div>
+          </div>
+          <p className="text-sm text-gray-300 whitespace-pre-wrap bg-gray-900/50 rounded-xl p-3 border border-gray-700">
+            {viewUpdate.daily_update}
+          </p>
         </Modal>
       )}
     </div>
