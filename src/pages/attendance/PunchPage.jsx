@@ -99,6 +99,7 @@ export default function PunchPage() {
   const [showLeaveForm,      setShowLeaveForm]      = useState(false);
   const [showPermissionForm, setShowPermissionForm] = useState(false);
   const [showCheckOutForm,   setShowCheckOutForm]   = useState(false);
+  const [viewUpdate,         setViewUpdate]         = useState(null);
   const [historyMonth,       setHistoryMonth]       = useState(
     new Date().toISOString().slice(0, 7)
   );
@@ -328,7 +329,7 @@ export default function PunchPage() {
           ) : (
             <Table headers={[
               'م', 'التاريخ', 'الحضور', 'الانصراف', 'الاستراحة',
-              'ساعات العمل', 'تأخير', 'خصم التأخير', 'مكافأة', 'الحالة', 'اعتماد',
+              'ساعات العمل', 'تأخير', 'خصم التأخير', 'مكافأة', 'الحالة', 'التحديث اليومي', 'اعتماد',
             ]}>
               {history.map((rec, i) => (
                 <Tr key={rec.id}>
@@ -375,6 +376,17 @@ export default function PunchPage() {
                     />
                   </Td>
                   <Td>
+                    {rec.daily_update ? (
+                      <button onClick={() => setViewUpdate(rec)}
+                        className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 max-w-[160px]">
+                        <FileText size={12} className="flex-shrink-0"/>
+                        <span className="truncate">{rec.daily_update}</span>
+                      </button>
+                    ) : (
+                      <span className="text-gray-600 text-xs">—</span>
+                    )}
+                  </Td>
+                  <Td>
                     {rec.is_approved
                       ? <span className="flex items-center gap-1 text-xs text-green-400"><CheckCircle size={12}/> معتمد</span>
                       : <span className="flex items-center gap-1 text-xs text-gray-500"><AlertCircle size={12}/> غير معتمد</span>
@@ -413,6 +425,16 @@ export default function PunchPage() {
             { onSuccess: () => setShowCheckOutForm(false) }
           )}
         />
+      )}
+
+      {/* Modal عرض تحديث يوم سابق */}
+      {viewUpdate && (
+        <Modal open onClose={() => setViewUpdate(null)} title={`التحديث اليومي — ${fmtDate(viewUpdate.date)}`}
+          footer={<Btn variant="outline" onClick={() => setViewUpdate(null)}>إغلاق</Btn>}>
+          <p className="text-sm text-gray-300 whitespace-pre-wrap bg-gray-900/50 rounded-xl p-3 border border-gray-700">
+            {viewUpdate.daily_update}
+          </p>
+        </Modal>
       )}
     </div>
   );
