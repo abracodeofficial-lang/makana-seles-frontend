@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import { propertiesApi, ownersApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
@@ -8,10 +9,12 @@ import {
   Textarea, SearchBox, Loading, ErrorMsg, InfoRow, Avatar,
   Table, Tr, Td,
 } from '../../components/ui';
-import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, MessageCircle, Phone, MapPin, Home, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, MessageCircle, Phone, MapPin, Home, X, Download, Compass, TrendingUp } from 'lucide-react';
 
 const STATUS_COLOR = { 'متاح': 'green', 'محجوز': 'amber', 'مباع': 'red', 'قيد المراجعة': 'purple' };
 const MEDIA_COLOR  = { 'تم': 'green', 'جاري': 'amber', 'معلق': 'red', 'ملغي': 'gray', 'جديد': 'blue' };
+const DIRECTIONS   = ['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية'];
+const todayISO      = () => new Date().toISOString().slice(0, 10);
 
 const waPhone = (phone = '') => {
   const d = phone.replace(/\D/g, '');
@@ -56,6 +59,9 @@ export default function PropertiesPage() {
   const [draftForm, setDraftForm]   = useState(null);
   const [draftOwner, setDraftOwner] = useState(null);
 
+  const [showExport, setShowExport] = useState(false);
+  const [exportRange, setExportRange] = useState({ date_from: todayISO(), date_to: todayISO() });
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['properties', search, filters],
     queryFn: () => propertiesApi.list({ search, ...filters }).then(r => r.data),
@@ -70,7 +76,43 @@ export default function PropertiesPage() {
     onSuccess: () => { toast.success('تم حذف العقار'); qc.invalidateQueries(['properties']); },
   });
 
-  const stats = data?.stats || {};
+  const stats       = data?.stats       || {};
+  const byType      = data?.by_type      || [];
+  const byDirection = data?.by_direction || [];
+
+  const handleExport = async () => {
+    try {
+      const res     = await propertiesApi.export(exportRange);
+      const records = res.data?.data || [];
+
+      if (!records.length) {
+        toast.error('لا توجد بيانات ضمن الفترة المحددة');
+        return;
+      }
+
+      const rows = records.map(p => ({
+        'الكود':          p.property_code,
+        'الاسم':          p.name,
+        'نوع العقار':      p.property_type?.name || '—',
+        'المالك':         p.owner?.name || '—',
+        'المدينة':        p.city?.name || '—',
+        'الحي':           p.neighborhood?.name || '—',
+        'الاتجاه':        p.direction || '—',
+        'الحالة':         p.status,
+        'السعر المعروض':  p.listed_price,
+        'المساحة':        p.total_area,
+        'تاريخ الإضافة':  p.created_at?.slice(0, 10),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'العقارات');
+      XLSX.writeFile(wb, `properties-${exportRange.date_from}-${exportRange.date_to}.xlsx`);
+
+      setShowExport(false);
+      toast.success('تم تصدير التقرير');
+    } catch { toast.error('فشل التصدير'); }
+  };
 
   if (isLoading) return <Loading />;
   if (error)     return <ErrorMsg />;
@@ -83,6 +125,9 @@ export default function PropertiesPage() {
         actions={
           <>
             <SearchBox value={search} onChange={setSearch} placeholder="بحث بالاسم أو الكود أو المالك..." />
+            <Btn variant="outline" onClick={() => setShowExport(true)}>
+              <Download size={14}/> تصدير
+            </Btn>
             <Btn onClick={() => { setEditing(null); setShowForm(true); }}>
               <Plus size={16}/> إضافة عقار جديد
             </Btn>
@@ -150,15 +195,80 @@ export default function PropertiesPage() {
                 className="text-xs py-1.5 w-full"
               />
             </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الاتجاه</label>
+              <Select
+                options={DIRECTIONS.map(v => ({ value: v, label: v }))}
+                value={filters.direction || ''}
+                onChange={e => setFilters(f => ({ ...f, direction: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">السعر من</label>
+              <Input
+                type="number"
+                value={filters.price_min || ''}
+                onChange={e => setFilters(f => ({ ...f, price_min: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">السعر إلى</label>
+              <Input
+                type="number"
+                value={filters.price_max || ''}
+                onChange={e => setFilters(f => ({ ...f, price_max: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">بحث بالكود</label>
+              <Input
+                placeholder="مثال: PR-2026-001"
+                value={filters.code || ''}
+                onChange={e => setFilters(f => ({ ...f, code: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <StatCard label="إجمالي العقارات" value={stats.total}        icon={<Building2 size={18}/>} color="blue" />
-          <StatCard label="متاح"             value={stats.available}    icon={<CheckCircle size={18}/>} color="green" />
-          <StatCard label="محجوز"            value={stats.reserved}     icon={<Clock size={18}/>}       color="amber" />
-          <StatCard label="مباع"             value={stats.sold}         icon={<XCircle size={18}/>}     color="red" />
+        <div className="grid grid-cols-5 gap-4">
+          <StatCard label="إجمالي العقارات"    value={stats.total}     icon={<Building2 size={18}/>}   color="blue" />
+          <StatCard label="متاح"                value={stats.available} icon={<CheckCircle size={18}/>} color="green" />
+          <StatCard label="محجوز"               value={stats.reserved}  icon={<Clock size={18}/>}       color="amber" />
+          <StatCard label="مباع"                value={stats.sold}      icon={<XCircle size={18}/>}     color="red" />
+          <StatCard label="جاري تسويقها"        value={stats.marketing} icon={<TrendingUp size={18}/>}  color="purple" />
+        </div>
+
+        {/* توزيع حسب النوع والاتجاه */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+              <Building2 size={12}/> حسب نوع العقار
+            </p>
+            {byType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+              <div className="flex flex-wrap gap-2">
+                {byType.map(t => (
+                  <Badge key={t.label} label={`${t.label} (${t.count})`} color="blue" />
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+              <Compass size={12}/> حسب الاتجاه
+            </p>
+            {byDirection.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+              <div className="flex flex-wrap gap-2">
+                {byDirection.map(d => (
+                  <Badge key={d.label} label={`${d.label} (${d.count})`} color="teal" />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Cards Grid */}
@@ -276,6 +386,23 @@ export default function PropertiesPage() {
         onClearDraft={() => { setDraftForm(null); setDraftOwner(null); }}
       />
       {showDetail && <PropertyDetail id={showDetail} onClose={() => setShowDetail(null)} />}
+
+      {showExport && (
+        <Modal open onClose={() => setShowExport(false)} title="تصدير تقرير العقارات"
+          footer={
+            <>
+              <Btn onClick={handleExport}><Download size={14}/> تصدير</Btn>
+              <Btn variant="outline" onClick={() => setShowExport(false)}>إلغاء</Btn>
+            </>
+          }>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="من تاريخ" type="date" value={exportRange.date_from}
+              onChange={e => setExportRange(r => ({ ...r, date_from: e.target.value }))} />
+            <Input label="إلى تاريخ" type="date" value={exportRange.date_to}
+              onChange={e => setExportRange(r => ({ ...r, date_to: e.target.value }))} />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

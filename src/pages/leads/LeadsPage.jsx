@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import { leadsApi, visitsApi, employeesApi, lookupApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
   Textarea, SearchBox, Avatar, Card, Loading, InfoRow,
 } from '../../components/ui';
-import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X, UserCheck, Home } from 'lucide-react';
+import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X, UserCheck, Home, Download } from 'lucide-react';
 
 const formatDate = (str) => {
   if (!str) return '—';
@@ -21,6 +22,8 @@ const CLASS_COLOR  = { جاد: 'green', استفسار: 'blue', بحث: 'gray' }
 const STATUS_COLOR = { مفتوح: 'green', مغلق: 'gray' };
 const FOLLOW_COLOR = { اليوم: 'amber', قادم: 'blue', متأخر: 'red' };
 const SOURCES = ['حراج','عقار','بيوت','ديل','موقع مكانة','مباشر','اتصال','تيك توك','سناب','تويتر','انستجرام','برودكاست','لوحة','يوتيوب','مجتمع','إعادة استهداف','سيتي سكيب','أخرى'];
+const DIRECTIONS = ['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية'];
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const OPERATION_STATUSES = ['يبغى تواصل هاتفي', 'عنده استفسارات أكثر', 'اهتمام مبدئي'];
 const SPECIALIST_STAGES  = ['تواصل', 'معلومات واستفسارات', 'زيارة', 'إقناع', 'تفاوض', 'تفاهم', 'حجز'];
@@ -35,12 +38,20 @@ export default function LeadsPage() {
   const [showForm, setShowForm]     = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   const [editing, setEditing]       = useState(null);
+  const [showExport, setShowExport] = useState(false);
+  const [exportRange, setExportRange] = useState({ date_from: todayISO(), date_to: todayISO() });
 
   const { data, isLoading } = useQuery({
     queryKey: ['leads', search, filters],
     queryFn: () => leadsApi.list({ search, ...filters }).then(r => r.data),
     staleTime: 30_000,
   });
+
+  const { data: employeesData } = useQuery({
+    queryKey: ['employees-all'],
+    queryFn: () => employeesApi.list({ per_page: 200, status: 'نشط' }).then(r => r.data),
+  });
+  const employees = employeesData?.data?.data || [];
 
   const resetFilters = () => { setFilters({}); setSearch(''); };
   const hasActiveFilters = search || Object.values(filters).some(v => v);
@@ -56,7 +67,48 @@ export default function LeadsPage() {
     onSuccess: () => { toast.success('تم حذف المهتم'); qc.invalidateQueries(['leads']); },
   });
 
-  const stats = data?.stats || {};
+  const stats        = data?.stats        || {};
+  const byBudget      = data?.by_budget     || [];
+  const byDirection   = data?.by_direction  || [];
+  const byStatus      = data?.by_status     || [];
+  const byType        = data?.by_type       || [];
+  const byOperation   = data?.by_operation  || [];
+  const bySpecialist  = data?.by_specialist || [];
+
+  const handleExport = async () => {
+    try {
+      const res     = await leadsApi.export(exportRange);
+      const records = res.data?.data || [];
+
+      if (!records.length) {
+        toast.error('لا توجد بيانات ضمن الفترة المحددة');
+        return;
+      }
+
+      const rows = records.map(l => ({
+        'الكود':            l.lead_code,
+        'الاسم':            l.name,
+        'الهاتف':           l.phone,
+        'الصفة':            l.applicant_type,
+        'نوع العقار':        l.property_type?.name || '—',
+        'الاتجاه':          l.direction || '—',
+        'الميزانية':         l.budget,
+        'التصنيف':          l.classification,
+        'حالة الطلب':       l.request_status,
+        'الأوبريشن':        l.operation_employee?.full_name || '—',
+        'الأخصائي':         l.broker_employee?.full_name || '—',
+        'تاريخ الإضافة':    l.created_at?.slice(0, 10),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'المهتمون');
+      XLSX.writeFile(wb, `leads-${exportRange.date_from}-${exportRange.date_to}.xlsx`);
+
+      setShowExport(false);
+      toast.success('تم تصدير التقرير');
+    } catch { toast.error('فشل التصدير'); }
+  };
 
   return (
     <div>
@@ -66,6 +118,9 @@ export default function LeadsPage() {
         actions={
           <>
             <SearchBox value={search} onChange={setSearch} placeholder="بحث بالاسم أو الكود..." />
+            <Btn variant="outline" onClick={() => setShowExport(true)}>
+              <Download size={14}/> تصدير
+            </Btn>
             <Btn onClick={() => { setEditing(null); setShowForm(true); }}>
               <Plus size={16}/> إضافة مهتم جديد
             </Btn>
@@ -187,6 +242,69 @@ export default function LeadsPage() {
                 className="text-xs py-1.5 w-full"
               />
             </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الأوبريشن</label>
+              <Select
+                options={employees.map(e => ({ value: String(e.id), label: e.full_name }))}
+                value={filters.employee_id || ''}
+                onChange={e => setFilters(f => ({ ...f, employee_id: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الأخصائي</label>
+              <Select
+                options={employees.map(e => ({ value: String(e.id), label: e.full_name }))}
+                value={filters.specialist_id || ''}
+                onChange={e => setFilters(f => ({ ...f, specialist_id: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الصفة</label>
+              <Select
+                options={['مهتم','مشتري','مستأجر','وسيط','وكيل','مطور'].map(v => ({ value: v, label: v }))}
+                value={filters.applicant_type || ''}
+                onChange={e => setFilters(f => ({ ...f, applicant_type: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">بحث برقم الجوال</label>
+              <Input
+                placeholder="05xxxxxxxx"
+                value={filters.phone || ''}
+                onChange={e => setFilters(f => ({ ...f, phone: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الاتجاه</label>
+              <Select
+                options={DIRECTIONS.map(v => ({ value: v, label: v }))}
+                value={filters.direction || ''}
+                onChange={e => setFilters(f => ({ ...f, direction: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">فئة السعر</label>
+              <Select
+                options={['أقل من 4M','بين 4-10M','أعلى من 10M'].map(v => ({ value: v, label: v }))}
+                value={filters.price_category || ''}
+                onChange={e => setFilters(f => ({ ...f, price_category: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">حالة الطلب</label>
+              <Select
+                options={['مفتوح','مغلق'].map(v => ({ value: v, label: v }))}
+                value={filters.request_status || ''}
+                onChange={e => setFilters(f => ({ ...f, request_status: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
           </div>
         </div>
 
@@ -196,6 +314,27 @@ export default function LeadsPage() {
           <StatCard label="عملاء جادون"      value={stats.serious}      icon={<TrendingUp size={18}/>}    color="green" />
           <StatCard label="زيارات اليوم"     value={stats.today_visits} icon={<Calendar size={18}/>}      color="amber" />
           <StatCard label="استفسارات"        value={stats.inquiries}    icon={<MessageSquare size={18}/>} color="purple" />
+        </div>
+
+        {/* توزيعات لوحة المهتمين */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            ['حسب الميزانية', byBudget, 'blue'],
+            ['حسب الاتجاه',   byDirection, 'teal'],
+            ['حسب النوع',     byType, 'blue'],
+            ['حسب الحالة',    byStatus, 'amber'],
+            ['حسب الأوبريشن', byOperation, 'purple'],
+            ['حسب الأخصائي',  bySpecialist, 'green'],
+          ].map(([title, list, color]) => (
+            <div key={title} className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">{title}</p>
+              {list.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+                <div className="flex flex-wrap gap-2">
+                  {list.map(item => <Badge key={item.label} label={`${item.label} (${item.count})`} color={color} />)}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Tabs */}
@@ -281,6 +420,23 @@ export default function LeadsPage() {
 
       <LeadForm open={showForm} onClose={() => setShowForm(false)} editing={editing} />
       {showDetail && <LeadDetail id={showDetail} onClose={() => setShowDetail(null)} />}
+
+      {showExport && (
+        <Modal open onClose={() => setShowExport(false)} title="تصدير تقرير المهتمين"
+          footer={
+            <>
+              <Btn onClick={handleExport}><Download size={14}/> تصدير</Btn>
+              <Btn variant="outline" onClick={() => setShowExport(false)}>إلغاء</Btn>
+            </>
+          }>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="من تاريخ" type="date" value={exportRange.date_from}
+              onChange={e => setExportRange(r => ({ ...r, date_from: e.target.value }))} />
+            <Input label="إلى تاريخ" type="date" value={exportRange.date_to}
+              onChange={e => setExportRange(r => ({ ...r, date_to: e.target.value }))} />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -289,7 +445,7 @@ const LEAD_DEFAULTS = {
   name: '', phone: '', applicant_type: 'مهتم', source: 'مباشر',
   classification: 'استفسار', seriousness_level: '1',
   purchase_goal: 'سكن', request_status: 'مفتوح',
-  property_type_id: '', operation_employee_id: '',
+  property_type_id: '', operation_employee_id: '', direction: '',
 };
 
 function LeadForm({ open, onClose, editing }) {
@@ -387,6 +543,8 @@ function LeadForm({ open, onClose, editing }) {
           options={SOURCES.map(v => ({ value: v, label: v }))} />
         <Select label="نوع العقار"       value={form.property_type_id} onChange={e => handlePropertyTypeChange(e.target.value)}
           options={propertyTypes.map(t => ({ value: String(t.id), label: t.name }))} />
+        <Select label="الاتجاه"          value={form.direction || ''} onChange={e => set('direction', e.target.value)}
+          options={DIRECTIONS.map(v => ({ value: v, label: v }))} />
         <Select label="موظف الأوبريشن"  value={form.operation_employee_id} onChange={e => set('operation_employee_id', e.target.value)}
           options={operationEmployeeOptions} />
         <Input  label="الميزانية (ريال)" value={form.budget || ''}     onChange={e => set('budget', e.target.value)} type="number" />

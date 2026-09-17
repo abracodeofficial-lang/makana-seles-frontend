@@ -16,6 +16,7 @@ export const ownersApi = {
   update:     (id, data)   => client.put(`/owners/${id}`, data),
   delete:     (id)         => client.delete(`/owners/${id}`),
   properties: (id)         => client.get(`/owners/${id}/properties`),
+  export:     (params)     => client.get('/owners/export', { params }),
 };
 
 // ── PROPERTIES
@@ -29,6 +30,7 @@ export const propertiesApi = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   deleteDocument: (id, docId) => client.delete(`/properties/${id}/documents/${docId}`),
+  export:         (params)     => client.get('/properties/export', { params }),
 };
 
 // ── LEADS
@@ -43,6 +45,7 @@ export const leadsApi = {
   assignSpecialist:      (id, data) => client.patch(`/leads/${id}/assign-specialist`, data),
   updateSpecialistStage: (id, data) => client.patch(`/leads/${id}/specialist-stage`, data),
   operationDashboard:    ()         => client.get('/leads/operation-dashboard'),
+  export:                (params)   => client.get('/leads/export', { params }),
 };
 
 // ── VISITS

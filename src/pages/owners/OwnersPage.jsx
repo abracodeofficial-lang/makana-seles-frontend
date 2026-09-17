@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ownersApi } from '../../api/services';
+import * as XLSX from 'xlsx';
+import { ownersApi, employeesApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
   Textarea, SearchBox, Avatar, Card, Loading, ErrorMsg, InfoRow,
 } from '../../components/ui';
-import { Plus, Pencil, Trash2, Building2, Users, Star, MessageCircle, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Users, Star, MessageCircle, X, Download, CheckCircle, ShieldCheck } from 'lucide-react';
 
 const toDateInput = (d) => d ? String(d).slice(0, 10) : '';
 const waPhone = (p = '') => { const d = p.replace(/\D/g,''); return d.startsWith('966') ? d : d.startsWith('0') ? '966'+d.slice(1) : '966'+d; };
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const DIRECTIONS = ['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية'];
 
 const STATUS_COLOR = { تم: 'green', لا: 'gray', جاري: 'amber', ملغي: 'red' };
 const TYPE_COLOR   = { مالك: 'blue', وكيل: 'teal', وسيط: 'purple', مكتب: 'amber', مطور: 'green', مشروع: 'blue' };
@@ -23,12 +26,20 @@ export default function OwnersPage() {
   const [showDetail, setShowDetail] = useState(null);
   const [showProps, setShowProps]   = useState(null);
   const [editing, setEditing]       = useState(null);
+  const [showExport, setShowExport] = useState(false);
+  const [exportRange, setExportRange] = useState({ date_from: todayISO(), date_to: todayISO() });
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['owners', search, filters],
     queryFn: () => ownersApi.list({ search, ...filters }).then(r => r.data),
     staleTime: 30_000,
   });
+
+  const { data: employeesData } = useQuery({
+    queryKey: ['employees-all'],
+    queryFn: () => employeesApi.list({ per_page: 200, status: 'نشط' }).then(r => r.data),
+  });
+  const employees = employeesData?.data?.data || [];
 
   const resetFilters = () => { setFilters({}); setSearch(''); };
   const hasActiveFilters = search || Object.values(filters).some(v => v);
@@ -38,7 +49,43 @@ export default function OwnersPage() {
     onSuccess: () => { toast.success('تم حذف المالك'); qc.invalidateQueries(['owners']); },
   });
 
-  const stats = data?.stats || {};
+  const stats           = data?.stats            || {};
+  const byOwnerType      = data?.by_owner_type     || [];
+  const byPropertyType   = data?.by_property_type  || [];
+  const byDirection       = data?.by_direction      || [];
+
+  const handleExport = async () => {
+    try {
+      const res     = await ownersApi.export(exportRange);
+      const records = res.data?.data || [];
+
+      if (!records.length) {
+        toast.error('لا توجد بيانات ضمن الفترة المحددة');
+        return;
+      }
+
+      const rows = records.map(o => ({
+        'الكود':            o.owner_code,
+        'الاسم':            o.name,
+        'الصفة':            o.type,
+        'الهاتف':           o.phone,
+        'المدينة':          o.city?.name || '—',
+        'عدد العقارات':     o.properties_count,
+        'حالة الحصري':      o.exclusive_status,
+        'المجموعة':         o.group || '—',
+        'موظف الأوبريشن':   o.sales_employee_owners?.full_name || '—',
+        'تاريخ الإضافة':    o.created_at?.slice(0, 10),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'الملاك');
+      XLSX.writeFile(wb, `owners-${exportRange.date_from}-${exportRange.date_to}.xlsx`);
+
+      setShowExport(false);
+      toast.success('تم تصدير التقرير');
+    } catch { toast.error('فشل التصدير'); }
+  };
 
   if (isLoading) return <Loading />;
   if (error)     return <ErrorMsg />;
@@ -51,6 +98,9 @@ export default function OwnersPage() {
         actions={
           <>
             <SearchBox value={search} onChange={setSearch} placeholder="بحث بالاسم أو الكود..." />
+            <Btn variant="outline" onClick={() => setShowExport(true)}>
+              <Download size={14}/> تصدير
+            </Btn>
             <Btn onClick={() => { setEditing(null); setShowForm(true); }}>
               <Plus size={16} /> إضافة مالك جديد
             </Btn>
@@ -142,16 +192,95 @@ export default function OwnersPage() {
                 className="text-xs py-1.5 w-full"
               />
             </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">موظف الأوبريشن</label>
+              <Select
+                options={employees.map(e => ({ value: String(e.id), label: e.full_name }))}
+                value={filters.sales_employee_owners_id || ''}
+                onChange={e => setFilters(f => ({ ...f, sales_employee_owners_id: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">نوع العقار</label>
+              <Select
+                options={[
+                  { value: '1', label: 'شقة' }, { value: '2', label: 'فلة' },
+                  { value: '3', label: 'عمارة' }, { value: '4', label: 'أرض' },
+                ]}
+                value={filters.property_type_id || ''}
+                onChange={e => setFilters(f => ({ ...f, property_type_id: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الاتجاه</label>
+              <Select
+                options={DIRECTIONS.map(v => ({ value: v, label: v }))}
+                value={filters.direction || ''}
+                onChange={e => setFilters(f => ({ ...f, direction: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">سعر العقار من</label>
+              <Input
+                type="number"
+                value={filters.price_min || ''}
+                onChange={e => setFilters(f => ({ ...f, price_min: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">سعر العقار إلى</label>
+              <Input
+                type="number"
+                value={filters.price_max || ''}
+                onChange={e => setFilters(f => ({ ...f, price_max: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-5 gap-4">
-          <StatCard label="إجمالي الملاك" value={stats.total}       icon={<Users size={18}/>}     color="blue" />
-          <StatCard label="ملاك أفراد"    value={stats.individuals}  icon={<Users size={18}/>}     color="green" />
-          <StatCard label="مطورون"         value={stats.developers}   icon={<Building2 size={18}/>} color="purple" />
-          <StatCard label="مكاتب"          value={stats.offices}      icon={<Building2 size={18}/>} color="amber" />
-          <StatCard label="مشاريع"         value={stats.projects}     icon={<Star size={18}/>}      color="teal" />
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-4">
+          <StatCard label="إجمالي الملاك"       value={stats.total}               icon={<Users size={18}/>}      color="blue" />
+          <StatCard label="ملاك أفراد"          value={stats.individuals}         icon={<Users size={18}/>}      color="green" />
+          <StatCard label="مطورون"               value={stats.developers}          icon={<Building2 size={18}/>}  color="purple" />
+          <StatCard label="مكاتب"                value={stats.offices}             icon={<Building2 size={18}/>}  color="amber" />
+          <StatCard label="مشاريع"               value={stats.projects}            icon={<Star size={18}/>}       color="teal" />
+          <StatCard label="عقارات مضافة"        value={stats.properties_added}    icon={<Building2 size={18}/>}  color="blue" />
+          <StatCard label="عقارات مقبولة"       value={stats.properties_accepted} icon={<CheckCircle size={18}/>} color="green" />
+          <StatCard label="عقارات موثّقة رسمياً" value={stats.properties_verified} icon={<ShieldCheck size={18}/>} color="purple" />
+        </div>
+
+        {/* توزيع الملاك والعقارات */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">حسب نوع المالك</p>
+            {byOwnerType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+              <div className="flex flex-wrap gap-2">
+                {byOwnerType.map(t => <Badge key={t.label} label={`${t.label} (${t.count})`} color={TYPE_COLOR[t.label] || 'gray'} />)}
+              </div>
+            )}
+          </div>
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">عقاراتهم حسب النوع</p>
+            {byPropertyType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+              <div className="flex flex-wrap gap-2">
+                {byPropertyType.map(t => <Badge key={t.label} label={`${t.label} (${t.count})`} color="blue" />)}
+              </div>
+            )}
+          </div>
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">عقاراتهم حسب الاتجاه</p>
+            {byDirection.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+              <div className="flex flex-wrap gap-2">
+                {byDirection.map(d => <Badge key={d.label} label={`${d.label} (${d.count})`} color="teal" />)}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Table */}
@@ -199,6 +328,23 @@ export default function OwnersPage() {
       <OwnerForm open={showForm} onClose={() => setShowForm(false)} editing={editing} />
       {showDetail && <OwnerDetail id={showDetail} onClose={() => setShowDetail(null)} />}
       {showProps  && <OwnerProperties id={showProps} onClose={() => setShowProps(null)} />}
+
+      {showExport && (
+        <Modal open onClose={() => setShowExport(false)} title="تصدير تقرير الملاك"
+          footer={
+            <>
+              <Btn onClick={handleExport}><Download size={14}/> تصدير</Btn>
+              <Btn variant="outline" onClick={() => setShowExport(false)}>إلغاء</Btn>
+            </>
+          }>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="من تاريخ" type="date" value={exportRange.date_from}
+              onChange={e => setExportRange(r => ({ ...r, date_from: e.target.value }))} />
+            <Input label="إلى تاريخ" type="date" value={exportRange.date_to}
+              onChange={e => setExportRange(r => ({ ...r, date_to: e.target.value }))} />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
