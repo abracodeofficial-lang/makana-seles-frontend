@@ -143,7 +143,7 @@ export default function AttendancePage() {
       const rows = records.map(r => ({
         'اسم الموظف':    r.employee?.full_name      || '—',
         'رقم الموظف':    r.employee?.employee_number || '—',
-        'التاريخ':       fmtDate(r.date),
+        'التاريخ':       fmtDate(String(r.date || '').slice(0, 10)),
         'الحضور':        fmtTime(r.check_in),
         'الانصراف':      fmtTime(r.check_out),
         'ساعات العمل':   calcHours(r.check_in, r.check_out),
@@ -250,7 +250,7 @@ export default function AttendancePage() {
           {isLoading ? <Loading /> : records.length === 0 ? (
             <p className="text-center text-gray-500 py-10 text-sm">لا توجد سجلات لهذه الفترة</p>
           ) : (
-            <Table headers={['الموظف', 'القسم', 'وقت الدخول', 'وقت الخروج', 'ساعات العمل', 'التأخير', 'الحالة', 'التحديث اليومي', 'تعديل']}>
+            <Table headers={['الموظف', 'التاريخ', 'القسم', 'وقت الدخول', 'وقت الخروج', 'ساعات العمل', 'التأخير', 'الحالة', 'التحديث اليومي', 'تعديل']}>
               {records.map(rec => {
                 const delay = formatDelay(rec.late_minutes);
                 return (
@@ -264,6 +264,7 @@ export default function AttendancePage() {
                         </div>
                       </div>
                     </Td>
+                    <Td className="text-gray-300 text-xs font-mono whitespace-nowrap">{fmtDate(String(rec.date || '').slice(0, 10))}</Td>
                     <Td className="text-gray-400 text-xs">{rec.employee?.department?.name || '—'}</Td>
                     <Td>
                       <span className="font-mono text-green-400">{fmtTime(rec.check_in)}</span>
@@ -387,7 +388,7 @@ export default function AttendancePage() {
             <Avatar name={viewUpdate.employee?.full_name} size="sm" />
             <div>
               <p className="text-sm font-semibold text-gray-100">{viewUpdate.employee?.full_name}</p>
-              <p className="text-xs text-gray-500">{fmtDate(viewUpdate.date)}</p>
+              <p className="text-xs text-gray-500">{fmtDate(String(viewUpdate.date || '').slice(0, 10))}</p>
             </div>
           </div>
           <p className="text-sm text-gray-300 whitespace-pre-wrap bg-gray-900/50 rounded-xl p-3 border border-gray-700">
