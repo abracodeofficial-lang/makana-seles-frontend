@@ -6,7 +6,7 @@ import { attendanceApi, employeesApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Card, Modal, Input, Select,
-  Textarea, SearchBox, Loading, Avatar, Table, Tr, Td,
+  Textarea, Loading, Avatar, Table, Tr, Td,
 } from '../../components/ui';
 import {
   UserCheck, Clock, UserX, Palmtree,
@@ -84,12 +84,58 @@ const calcHours = (checkIn, checkOut) => {
   return formatWorkHours(mins / 60);
 };
 
+// ── قائمة موظفين منسدلة مع بحث ─────────────────────────────────
+function EmployeeCombobox({ employees, value, onChange }) {
+  const [open, setOpen]   = useState(false);
+  const [query, setQuery] = useState('');
+  const selected = employees.find(e => String(e.id) === String(value));
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? employees.filter(e =>
+        (e.full_name || '').toLowerCase().includes(q) ||
+        (e.employee_number || '').toLowerCase().includes(q))
+    : employees;
+
+  const pick = (id) => { onChange(id); setQuery(''); setOpen(false); };
+
+  return (
+    <div className="relative">
+      <input
+        value={open ? query : (selected?.full_name || '')}
+        placeholder="كل الموظفين"
+        onFocus={() => { setQuery(''); setOpen(true); }}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        onBlur={() => setOpen(false)}
+        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-blue-500 transition-colors"
+      />
+      {open && (
+        <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl">
+          <div onMouseDown={() => pick('')}
+            className="px-3 py-2 text-xs text-gray-400 hover:bg-gray-700 cursor-pointer border-b border-gray-700">
+            كل الموظفين
+          </div>
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-xs text-gray-500">لا نتائج</div>
+          ) : filtered.map(e => (
+            <div key={e.id} onMouseDown={() => pick(String(e.id))}
+              className={`px-3 py-2 text-xs cursor-pointer hover:bg-gray-700 ${String(e.id) === String(value) ? 'text-blue-400' : 'text-gray-200'}`}>
+              {e.full_name}
+              {e.employee_number && <span className="text-gray-500 font-mono mr-2">{e.employee_number}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── الصفحة الرئيسية ──────────────────────────────────────────
 export default function AttendancePage() {
   const qc = useQueryClient();
   const [dateFrom,  setDateFrom]  = useState(todayISO());
   const [dateTo,    setDateTo]    = useState(todayISO());
-  const [search,    setSearch]    = useState('');
+  const [employeeId, setEmployeeId] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [shiftId,      setShiftId]      = useState('');
@@ -107,17 +153,25 @@ export default function AttendancePage() {
   const departments = hrData?.departments || [];
   const shifts      = hrData?.shifts      || [];
 
+  const { data: employeesData } = useQuery({
+    queryKey: ['employees-all'],
+    queryFn:  () => employeesApi.list({ per_page: 200, status: 'نشط' }).then(r => r.data),
+    staleTime: 5 * 60_000,
+  });
+  const employees = employeesData?.data?.data || [];
+
   const resetFilters = () => {
     setDateFrom(todayISO()); setDateTo(todayISO());
-    setSearch(''); setDepartmentId(''); setStatusFilter(''); setShiftId('');
+    setEmployeeId(''); setDepartmentId(''); setStatusFilter(''); setShiftId('');
   };
-  const hasActiveFilters = search || departmentId || statusFilter || shiftId
+  const hasActiveFilters = employeeId || departmentId || statusFilter || shiftId
     || dateFrom !== todayISO() || dateTo !== todayISO();
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['attendance', dateFrom, dateTo, search, departmentId, statusFilter, shiftId],
+    queryKey: ['attendance', dateFrom, dateTo, employeeId, departmentId, statusFilter, shiftId],
     queryFn: () => attendanceApi.list({
-      date_from: dateFrom, date_to: dateTo, search,
+      date_from: dateFrom, date_to: dateTo,
+      employee_id:   employeeId   || undefined,
       department_id: departmentId || undefined,
       status:        statusFilter || undefined,
       shift_id:      shiftId      || undefined,
@@ -174,7 +228,6 @@ export default function AttendancePage() {
         subtitle="متابعة وتسجيل حضور الموظفين يومياً"
         actions={
           <>
-            <SearchBox value={search} onChange={setSearch} placeholder="بحث باسم الموظف..." />
             <Btn variant="outline" onClick={() => setShowExport(true)}>
               <Download size={14}/> تصدير
             </Btn>
@@ -197,14 +250,18 @@ export default function AttendancePage() {
               </Btn>
             )}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الموظف</label>
+              <EmployeeCombobox employees={employees} value={employeeId} onChange={setEmployeeId} />
+            </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">من تاريخ</label>
-              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="text-xs py-1.5 w-full" />
+              <Input type="date" value={dateFrom} onChange={e => { const v = e.target.value; setDateFrom(v); if (v && v > dateTo) setDateTo(v); }} className="text-xs py-1.5 w-full" />
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ</label>
-              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="text-xs py-1.5 w-full" />
+              <Input type="date" value={dateTo} onChange={e => { const v = e.target.value; setDateTo(v); if (v && v < dateFrom) setDateFrom(v); }} className="text-xs py-1.5 w-full" />
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">القسم</label>
