@@ -293,33 +293,26 @@ export default function LeadsPage() {
                 className="text-xs py-1.5 w-full"
               />
             </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">المدينة</label>
-              <Select
-                options={cities.map(c => ({ value: String(c.id), label: c.name }))}
-                value={filters.city_id || ''}
-                onChange={e => setFilters(f => ({ ...f, city_id: e.target.value, neighborhood_id: '' }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">الحي</label>
-              <Select
-                options={neighborhoods.map(n => ({ value: String(n.id), label: n.name }))}
-                value={filters.neighborhood_id || ''}
-                onChange={e => setFilters(f => ({ ...f, neighborhood_id: e.target.value }))}
-                disabled={!filters.city_id}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">الاتجاه</label>
-              <Select
-                options={DIRECTIONS.map(v => ({ value: v, label: v }))}
-                value={filters.direction || ''}
-                onChange={e => setFilters(f => ({ ...f, direction: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
+            <div className="col-span-2 grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] text-gray-500 mb-1">المدينة</label>
+                <Select
+                  options={cities.map(c => ({ value: String(c.id), label: c.name }))}
+                  value={filters.city_id || ''}
+                  onChange={e => setFilters(f => ({ ...f, city_id: e.target.value, neighborhood_id: '' }))}
+                  className="text-xs py-1.5 w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-500 mb-1">الحي</label>
+                <Select
+                  options={neighborhoods.map(n => ({ value: String(n.id), label: n.name }))}
+                  value={filters.neighborhood_id || ''}
+                  onChange={e => setFilters(f => ({ ...f, neighborhood_id: e.target.value }))}
+                  disabled={!filters.city_id}
+                  className="text-xs py-1.5 w-full"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">فئة السعر</label>
