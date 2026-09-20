@@ -107,9 +107,16 @@ function EmployeeCombobox({ employees, value, onChange }) {
         onFocus={() => { setQuery(''); setOpen(true); }}
         onChange={e => { setQuery(e.target.value); setOpen(true); }}
         onBlur={() => setOpen(false)}
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-100 outline-none focus:border-blue-500 transition-colors"
+        className={`w-full bg-gray-800 border border-gray-700 rounded-lg ${selected ? 'pl-14' : 'pl-8'} pr-3 py-1.5 text-xs text-gray-100 outline-none focus:border-blue-500 transition-colors`}
       />
       <ChevronDown size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+      {selected && !open && (
+        <button type="button" title="إلغاء هذا الفلتر"
+          onMouseDown={e => { e.preventDefault(); e.stopPropagation(); pick(''); }}
+          className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-400 transition-colors">
+          <X size={13} />
+        </button>
+      )}
       {open && (
         <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl">
           <div onMouseDown={() => pick('')}
