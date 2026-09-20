@@ -53,6 +53,13 @@ export default function LeadsPage() {
   });
   const employees = employeesData?.data?.data || [];
 
+  const { data: citiesData } = useQuery({
+    queryKey: ['lookup-cities'],
+    queryFn: () => lookupApi.cities().then(r => r.data),
+    staleTime: Infinity,
+  });
+  const cities = Array.isArray(citiesData) ? citiesData : (citiesData?.data || []);
+
   const resetFilters = () => { setFilters({}); setSearch(''); };
   const hasActiveFilters = search || Object.values(filters).some(v => v);
 
@@ -275,6 +282,15 @@ export default function LeadsPage() {
                 placeholder="05xxxxxxxx"
                 value={filters.phone || ''}
                 onChange={e => setFilters(f => ({ ...f, phone: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">المدينة</label>
+              <Select
+                options={cities.map(c => ({ value: String(c.id), label: c.name }))}
+                value={filters.city_id || ''}
+                onChange={e => setFilters(f => ({ ...f, city_id: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
             </div>

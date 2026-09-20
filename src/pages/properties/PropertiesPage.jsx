@@ -126,6 +126,13 @@ export default function PropertiesPage() {
     staleTime: 30_000,
   });
 
+  const { data: citiesData } = useQuery({
+    queryKey: ['lookup-cities'],
+    queryFn: () => lookupApi.cities().then(r => r.data),
+    staleTime: Infinity,
+  });
+  const cities = Array.isArray(citiesData) ? citiesData : (citiesData?.data || []);
+
   const resetFilters = () => { setFilters({}); setOwnerLabel(''); setPropertyLabel(''); };
   const hasActiveFilters = Object.values(filters).some(v => v);
 
@@ -265,6 +272,15 @@ export default function PropertiesPage() {
                 ]}
                 value={filters.property_type_id || ''}
                 onChange={e => setFilters(f => ({ ...f, property_type_id: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">المدينة</label>
+              <Select
+                options={cities.map(c => ({ value: String(c.id), label: c.name }))}
+                value={filters.city_id || ''}
+                onChange={e => setFilters(f => ({ ...f, city_id: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
             </div>

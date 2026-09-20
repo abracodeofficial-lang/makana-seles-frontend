@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { ownersApi, employeesApi } from '../../api/services';
+import { ownersApi, employeesApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
@@ -40,6 +40,13 @@ export default function OwnersPage() {
     queryFn: () => employeesApi.list({ per_page: 200, status: 'نشط' }).then(r => r.data),
   });
   const employees = employeesData?.data?.data || [];
+
+  const { data: citiesData } = useQuery({
+    queryKey: ['lookup-cities'],
+    queryFn: () => lookupApi.cities().then(r => r.data),
+    staleTime: Infinity,
+  });
+  const cities = Array.isArray(citiesData) ? citiesData : (citiesData?.data || []);
 
   const resetFilters = () => { setFilters({}); setSearch(''); };
   const hasActiveFilters = search || Object.values(filters).some(v => v);
@@ -210,6 +217,15 @@ export default function OwnersPage() {
                 ]}
                 value={filters.property_type_id || ''}
                 onChange={e => setFilters(f => ({ ...f, property_type_id: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">المدينة</label>
+              <Select
+                options={cities.map(c => ({ value: String(c.id), label: c.name }))}
+                value={filters.city_id || ''}
+                onChange={e => setFilters(f => ({ ...f, city_id: e.target.value }))}
                 className="text-xs py-1.5 w-full"
               />
             </div>
