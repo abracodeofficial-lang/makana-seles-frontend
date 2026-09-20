@@ -176,7 +176,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">نوع العقار</label>
-              <Select
+              <Select clearable
                 options={[
                   { value: '1', label: 'شقة' }, { value: '2', label: 'فلة' },
                   { value: '3', label: 'عمارة' }, { value: '4', label: 'أرض' },
@@ -188,7 +188,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">التصنيف</label>
-              <Select
+              <Select clearable
                 options={['جاد','استفسار','بحث'].map(v => ({ value: v, label: v }))}
                 value={filters.classification || ''}
                 onChange={e => setFilters(f => ({ ...f, classification: e.target.value }))}
@@ -197,7 +197,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">نسبة الجدية</label>
-              <Select
+              <Select clearable
                 options={['1','2','3','4'].map(v => ({ value: v, label: v }))}
                 value={filters.seriousness_level || ''}
                 onChange={e => setFilters(f => ({ ...f, seriousness_level: e.target.value }))}
@@ -206,7 +206,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">مصدر الطلب</label>
-              <Select
+              <Select clearable
                 options={SOURCES.map(v => ({ value: v, label: v }))}
                 value={filters.source || ''}
                 onChange={e => setFilters(f => ({ ...f, source: e.target.value }))}
@@ -251,7 +251,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">الأوبريشن</label>
-              <Select
+              <Select clearable
                 options={employees.map(e => ({ value: String(e.id), label: e.full_name }))}
                 value={filters.employee_id || ''}
                 onChange={e => setFilters(f => ({ ...f, employee_id: e.target.value }))}
@@ -260,7 +260,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">الأخصائي</label>
-              <Select
+              <Select clearable
                 options={employees.map(e => ({ value: String(e.id), label: e.full_name }))}
                 value={filters.specialist_id || ''}
                 onChange={e => setFilters(f => ({ ...f, specialist_id: e.target.value }))}
@@ -269,7 +269,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">الصفة</label>
-              <Select
+              <Select clearable
                 options={['مهتم','مشتري','مستأجر','وسيط','وكيل','مطور'].map(v => ({ value: v, label: v }))}
                 value={filters.applicant_type || ''}
                 onChange={e => setFilters(f => ({ ...f, applicant_type: e.target.value }))}
@@ -287,7 +287,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">المدينة</label>
-              <Select
+              <Select clearable
                 options={cities.map(c => ({ value: String(c.id), label: c.name }))}
                 value={filters.city_id || ''}
                 onChange={e => setFilters(f => ({ ...f, city_id: e.target.value }))}
@@ -296,7 +296,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">الاتجاه</label>
-              <Select
+              <Select clearable
                 options={DIRECTIONS.map(v => ({ value: v, label: v }))}
                 value={filters.direction || ''}
                 onChange={e => setFilters(f => ({ ...f, direction: e.target.value }))}
@@ -305,7 +305,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">فئة السعر</label>
-              <Select
+              <Select clearable
                 options={['أقل من 4M','بين 4-10M','أعلى من 10M'].map(v => ({ value: v, label: v }))}
                 value={filters.price_category || ''}
                 onChange={e => setFilters(f => ({ ...f, price_category: e.target.value }))}
@@ -314,7 +314,7 @@ export default function LeadsPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">حالة الطلب</label>
-              <Select
+              <Select clearable
                 options={['مفتوح','مغلق'].map(v => ({ value: v, label: v }))}
                 value={filters.request_status || ''}
                 onChange={e => setFilters(f => ({ ...f, request_status: e.target.value }))}
