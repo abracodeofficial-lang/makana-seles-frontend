@@ -133,6 +133,14 @@ export default function PropertiesPage() {
   });
   const cities = Array.isArray(citiesData) ? citiesData : (citiesData?.data || []);
 
+  const { data: neighborhoodsData } = useQuery({
+    queryKey: ['lookup-neighborhoods', filters.city_id],
+    queryFn: () => lookupApi.neighborhoods(filters.city_id).then(r => r.data),
+    enabled: !!filters.city_id,
+    staleTime: Infinity,
+  });
+  const neighborhoods = Array.isArray(neighborhoodsData) ? neighborhoodsData : (neighborhoodsData?.data || []);
+
   const resetFilters = () => { setFilters({}); setOwnerLabel(''); setPropertyLabel(''); };
   const hasActiveFilters = Object.values(filters).some(v => v);
 
@@ -280,7 +288,17 @@ export default function PropertiesPage() {
               <Select
                 options={cities.map(c => ({ value: String(c.id), label: c.name }))}
                 value={filters.city_id || ''}
-                onChange={e => setFilters(f => ({ ...f, city_id: e.target.value }))}
+                onChange={e => setFilters(f => ({ ...f, city_id: e.target.value, neighborhood_id: '' }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">الحي</label>
+              <Select
+                options={neighborhoods.map(n => ({ value: String(n.id), label: n.name }))}
+                value={filters.neighborhood_id || ''}
+                onChange={e => setFilters(f => ({ ...f, neighborhood_id: e.target.value }))}
+                disabled={!filters.city_id}
                 className="text-xs py-1.5 w-full"
               />
             </div>
