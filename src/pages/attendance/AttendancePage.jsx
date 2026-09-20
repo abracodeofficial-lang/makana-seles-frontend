@@ -273,17 +273,17 @@ export default function AttendancePage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">القسم</label>
-              <Select clearable value={departmentId} onChange={e => setDepartmentId(e.target.value)} className="text-xs py-1.5 w-full"
+              <Select value={departmentId} onChange={e => setDepartmentId(e.target.value)} className="text-xs py-1.5 w-full"
                 options={departments.map(d => ({ value: String(d.id), label: d.name }))} />
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">الحالة</label>
-              <Select clearable value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="text-xs py-1.5 w-full"
+              <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="text-xs py-1.5 w-full"
                 options={['حاضر', 'متأخر', 'غياب', 'إجازة'].map(v => ({ value: v, label: v }))} />
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">الشيفت</label>
-              <Select clearable value={shiftId} onChange={e => setShiftId(e.target.value)} className="text-xs py-1.5 w-full"
+              <Select value={shiftId} onChange={e => setShiftId(e.target.value)} className="text-xs py-1.5 w-full"
                 options={shifts.map(s => ({ value: String(s.id), label: s.name }))} />
             </div>
           </div>

@@ -256,7 +256,7 @@ export default function PropertiesPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">الحالة</label>
-              <Select clearable
+              <Select
                 options={['متاح','محجوز','مباع','قيد المراجعة'].map(v => ({ value: v, label: v }))}
                 value={filters.status || ''}
                 onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
@@ -265,7 +265,7 @@ export default function PropertiesPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">نوع العقار</label>
-              <Select clearable
+              <Select
                 options={[
                   { value: '1', label: 'شقة' }, { value: '2', label: 'فلة' },
                   { value: '3', label: 'عمارة' }, { value: '4', label: 'أرض' },
@@ -277,7 +277,7 @@ export default function PropertiesPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">المدينة</label>
-              <Select clearable
+              <Select
                 options={cities.map(c => ({ value: String(c.id), label: c.name }))}
                 value={filters.city_id || ''}
                 onChange={e => setFilters(f => ({ ...f, city_id: e.target.value }))}
@@ -286,7 +286,7 @@ export default function PropertiesPage() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">الاتجاه</label>
-              <Select clearable
+              <Select
                 options={DIRECTIONS.map(v => ({ value: v, label: v }))}
                 value={filters.direction || ''}
                 onChange={e => setFilters(f => ({ ...f, direction: e.target.value }))}

@@ -75,19 +75,36 @@ export function Input({ label, error, className = '', ...props }) {
   );
 }
 
-export function Select({ label, error, options = [], className = '', clearable = false, ...props }) {
+export function ClearableSelect({ wrapperClassName = '', value, onChange, className = '', children, ...props }) {
+  return (
+    <div className={`relative ${wrapperClassName}`}>
+      <select value={value} onChange={onChange} className={`${className} ${value ? 'pl-12' : ''}`} {...props}>
+        {children}
+      </select>
+      {value && !props.disabled && (
+        <button type="button" title="إلغاء الاختيار"
+          onClick={() => onChange({ target: { value: '' } })}
+          className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-400 transition-colors">
+          <X size={13} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function Select({ label, error, options = [], className = '', clearable = true, ...props }) {
   return (
     <div className="space-y-1">
       {label && <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</label>}
       <div className="relative">
         <select
-          className={`w-full bg-gray-800 border ${error ? 'border-red-500' : 'border-gray-700'} rounded-lg px-3 py-2.5 h-[42px] text-sm text-gray-100 outline-none focus:border-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${clearable && props.value ? 'pl-14' : ''} ${className}`}
+          className={`w-full bg-gray-800 border ${error ? 'border-red-500' : 'border-gray-700'} rounded-lg px-3 py-2.5 h-[42px] text-sm text-gray-100 outline-none focus:border-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${clearable && props.value && !props.disabled ? 'pl-14' : ''} ${className}`}
           {...props}
         >
           <option value="">اختر...</option>
           {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        {clearable && props.value && (
+        {clearable && props.value && !props.disabled && (
           <button type="button" title="إلغاء هذا الفلتر"
             onClick={() => props.onChange?.({ target: { value: '' } })}
             className="absolute left-8 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-400 transition-colors">

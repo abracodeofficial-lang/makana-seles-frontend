@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { PageHeader } from '../../components/layout/Layout';
-import { Btn, Badge, Card, Modal, Input, Select, Table, Tr, Td, Loading } from '../../components/ui';
+import { Btn, Badge, Card, Modal, Input, Select, ClearableSelect, Table, Tr, Td, Loading } from '../../components/ui';
 import { Plus, Pencil, Trash2, MapPin, Building2, Clock, Calendar, Settings, Timer, Users } from 'lucide-react';
 
 // ── التبويبات ─────────────────────────────────────────────────
@@ -151,14 +151,15 @@ function TabCities() {
         </div>
 
         {/* فلتر المدينة */}
-        <select
+        <ClearableSelect
+          wrapperClassName="mb-4"
           value={selectedCity}
           onChange={e => setSelectedCity(e.target.value)}
-          className="w-full mb-4 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500 transition-colors"
+          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 outline-none focus:border-blue-500 transition-colors"
         >
           <option value="">اختر مدينة لعرض أحيائها...</option>
           {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </ClearableSelect>
 
         {!selectedCity ? (
           <EmptyState msg="اختر مدينة من القائمة أعلاه" />

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { permissionsApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
-  Btn, Badge, StatCard, Modal, Select, Textarea, Loading, Avatar,
+  Btn, Badge, StatCard, Modal, Select, ClearableSelect, Textarea, Loading, Avatar,
 } from '../../components/ui';
 import useAuthStore from '../../store/authStore';
 import { Clock, CheckCircle, XCircle, Plus, ThumbsUp, ThumbsDown } from 'lucide-react';
@@ -71,7 +71,7 @@ export default function PermissionsPage() {
         subtitle="إدارة ومتابعة طلبات إذونات الموظفين"
         actions={
           <>
-            <select
+            <ClearableSelect
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
               className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-200 outline-none focus:border-blue-500"
@@ -79,7 +79,7 @@ export default function PermissionsPage() {
               {STATUS_FILTER.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
-            </select>
+            </ClearableSelect>
             <Btn onClick={() => setShowNewForm(true)}>
               <Plus size={14}/> طلب إذن جديد
             </Btn>
