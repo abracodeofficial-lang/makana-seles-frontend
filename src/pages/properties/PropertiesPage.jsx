@@ -9,7 +9,7 @@ import {
   Textarea, Loading, ErrorMsg, InfoRow, Avatar,
   Table, Tr, Td,
 } from '../../components/ui';
-import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, MessageCircle, Phone, MapPin, Home, X, Download, Compass, TrendingUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, ChevronDown, MessageCircle, Phone, MapPin, Home, X, Download, Compass, TrendingUp } from 'lucide-react';
 
 const STATUS_COLOR = { 'متاح': 'green', 'محجوز': 'amber', 'مباع': 'red', 'قيد المراجعة': 'purple' };
 const MEDIA_COLOR  = { 'تم': 'green', 'جاري': 'amber', 'معلق': 'red', 'ملغي': 'gray', 'جديد': 'blue' };
@@ -47,21 +47,20 @@ function MediaBar({ photo, design, video, marketing }) {
   );
 }
 
-// ── قائمة ملاك منسدلة مع بحث (البحث من السيرفر) ─────────────────
-function OwnerCombobox({ label, onChange }) {
+// ── قائمة منسدلة مع بحث (البحث من السيرفر) ──────────────────────
+function RemoteCombobox({ label, placeholder, allLabel, queryKey, fetcher, getName, getSub, onChange }) {
   const [open, setOpen]   = useState(false);
   const [query, setQuery] = useState('');
 
-  const { data } = useQuery({
-    queryKey: ['owners-combo', query],
-    queryFn:  () => ownersApi.list({ search: query }).then(r => r.data),
+  const { data: items = [] } = useQuery({
+    queryKey: [queryKey, query],
+    queryFn:  () => fetcher(query),
     enabled:  open,
     staleTime: 30_000,
   });
-  const owners = data?.data?.data || [];
 
-  const pick = (owner) => {
-    onChange(owner ? { id: String(owner.id), name: owner.name } : { id: '', name: '' });
+  const pick = (item) => {
+    onChange(item ? { id: String(item.id), name: getName(item) } : { id: '', name: '' });
     setQuery('');
     setOpen(false);
   };
@@ -70,25 +69,26 @@ function OwnerCombobox({ label, onChange }) {
     <div className="relative">
       <input
         value={open ? query : label}
-        placeholder="كل الملاك"
+        placeholder={placeholder}
         onFocus={() => { setQuery(''); setOpen(true); }}
         onChange={e => { setQuery(e.target.value); setOpen(true); }}
         onBlur={() => setOpen(false)}
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-blue-500 transition-colors"
+        className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-100 outline-none focus:border-blue-500 transition-colors"
       />
+      <ChevronDown size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
       {open && (
         <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl">
           <div onMouseDown={() => pick(null)}
             className="px-3 py-2 text-xs text-gray-400 hover:bg-gray-700 cursor-pointer border-b border-gray-700">
-            كل الملاك
+            {allLabel}
           </div>
-          {owners.length === 0 ? (
+          {items.length === 0 ? (
             <div className="px-3 py-2 text-xs text-gray-500">لا نتائج</div>
-          ) : owners.map(o => (
-            <div key={o.id} onMouseDown={() => pick(o)}
+          ) : items.map(item => (
+            <div key={item.id} onMouseDown={() => pick(item)}
               className="px-3 py-2 text-xs text-gray-200 cursor-pointer hover:bg-gray-700">
-              {o.name}
-              <span className="text-gray-500 font-mono mr-2">{o.owner_code}</span>
+              {getName(item)}
+              <span className="text-gray-500 font-mono mr-2">{getSub(item)}</span>
             </div>
           ))}
         </div>
@@ -99,9 +99,9 @@ function OwnerCombobox({ label, onChange }) {
 
 export default function PropertiesPage() {
   const qc = useQueryClient();
-  const [search, setSearch]         = useState('');
   const [filters, setFilters]       = useState({});
   const [ownerLabel, setOwnerLabel] = useState('');
+  const [propertyLabel, setPropertyLabel] = useState('');
   const [showForm, setShowForm]     = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   const [editing, setEditing]       = useState(null);
@@ -114,13 +114,13 @@ export default function PropertiesPage() {
   const [exportRange, setExportRange] = useState({ date_from: todayISO(), date_to: todayISO() });
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['properties', search, filters],
-    queryFn: () => propertiesApi.list({ search, ...filters }).then(r => r.data),
+    queryKey: ['properties', filters],
+    queryFn: () => propertiesApi.list({ ...filters }).then(r => r.data),
     staleTime: 30_000,
   });
 
-  const resetFilters = () => { setFilters({}); setSearch(''); setOwnerLabel(''); };
-  const hasActiveFilters = search || Object.values(filters).some(v => v);
+  const resetFilters = () => { setFilters({}); setOwnerLabel(''); setPropertyLabel(''); };
+  const hasActiveFilters = Object.values(filters).some(v => v);
 
   const deleteMut = useMutation({
     mutationFn: propertiesApi.delete,
@@ -198,17 +198,27 @@ export default function PropertiesPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">اسم العقار</label>
-              <Input
-                placeholder="ابحث باسم العقار..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="text-xs py-1.5 w-full"
+              <RemoteCombobox
+                label={propertyLabel}
+                placeholder="كل العقارات"
+                allLabel="كل العقارات"
+                queryKey="properties-combo"
+                fetcher={(q) => propertiesApi.list({ search: q }).then(r => r.data?.data?.data || [])}
+                getName={p => p.name}
+                getSub={p => p.property_code}
+                onChange={({ id, name }) => { setFilters(f => ({ ...f, property_id: id })); setPropertyLabel(name); }}
               />
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">المالك</label>
-              <OwnerCombobox
+              <RemoteCombobox
                 label={ownerLabel}
+                placeholder="كل الملاك"
+                allLabel="كل الملاك"
+                queryKey="owners-combo"
+                fetcher={(q) => ownersApi.list({ search: q }).then(r => r.data?.data?.data || [])}
+                getName={o => o.name}
+                getSub={o => o.owner_code}
                 onChange={({ id, name }) => { setFilters(f => ({ ...f, owner_id: id })); setOwnerLabel(name); }}
               />
             </div>
