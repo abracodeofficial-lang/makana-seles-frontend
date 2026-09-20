@@ -73,7 +73,7 @@ function RemoteCombobox({ label, placeholder, allLabel, queryKey, fetcher, getNa
         onFocus={() => { setQuery(''); setOpen(true); }}
         onChange={e => { setQuery(e.target.value); setOpen(true); }}
         onBlur={() => setOpen(false)}
-        className={`w-full bg-gray-800 border border-gray-700 rounded-lg ${label ? 'pl-14' : 'pl-8'} pr-3 py-1.5 text-xs text-gray-100 outline-none focus:border-blue-500 transition-colors`}
+        className={`w-full bg-gray-800 border border-gray-700 rounded-lg ${label ? 'pl-14' : 'pl-8'} pr-3 py-2.5 h-[42px] text-sm text-gray-100 outline-none focus:border-blue-500 transition-colors`}
       />
       <ChevronDown size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
       {label && !open && (

@@ -67,7 +67,7 @@ export function Input({ label, error, className = '', ...props }) {
     <div className="space-y-1">
       {label && <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</label>}
       <input
-        className={`w-full bg-gray-800 border ${error ? 'border-red-500' : 'border-gray-700'} rounded-lg px-3 py-2.5 text-sm text-gray-100 outline-none focus:border-blue-500 transition-colors placeholder:text-gray-600 ${className}`}
+        className={`w-full bg-gray-800 border ${error ? 'border-red-500' : 'border-gray-700'} rounded-lg px-3 py-2.5 h-[42px] text-sm text-gray-100 outline-none focus:border-blue-500 transition-colors placeholder:text-gray-600 ${className}`}
         {...props}
       />
       {error && <p className="text-xs text-red-400">{error}</p>}
@@ -80,7 +80,7 @@ export function Select({ label, error, options = [], className = '', ...props })
     <div className="space-y-1">
       {label && <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</label>}
       <select
-        className={`w-full bg-gray-800 border ${error ? 'border-red-500' : 'border-gray-700'} rounded-lg px-3 py-2.5 text-sm text-gray-100 outline-none focus:border-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${className}`}
+        className={`w-full bg-gray-800 border ${error ? 'border-red-500' : 'border-gray-700'} rounded-lg px-3 py-2.5 h-[42px] text-sm text-gray-100 outline-none focus:border-blue-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${className}`}
         {...props}
       >
         <option value="">اختر...</option>
