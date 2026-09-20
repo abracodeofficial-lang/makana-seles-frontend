@@ -6,7 +6,7 @@ import { propertiesApi, ownersApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Card, Modal, Input, Select,
-  Textarea, SearchBox, Loading, ErrorMsg, InfoRow, Avatar,
+  Textarea, Loading, ErrorMsg, InfoRow, Avatar,
   Table, Tr, Td,
 } from '../../components/ui';
 import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, MessageCircle, Phone, MapPin, Home, X, Download, Compass, TrendingUp } from 'lucide-react';
@@ -47,10 +47,61 @@ function MediaBar({ photo, design, video, marketing }) {
   );
 }
 
+// ── قائمة ملاك منسدلة مع بحث (البحث من السيرفر) ─────────────────
+function OwnerCombobox({ label, onChange }) {
+  const [open, setOpen]   = useState(false);
+  const [query, setQuery] = useState('');
+
+  const { data } = useQuery({
+    queryKey: ['owners-combo', query],
+    queryFn:  () => ownersApi.list({ search: query }).then(r => r.data),
+    enabled:  open,
+    staleTime: 30_000,
+  });
+  const owners = data?.data?.data || [];
+
+  const pick = (owner) => {
+    onChange(owner ? { id: String(owner.id), name: owner.name } : { id: '', name: '' });
+    setQuery('');
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        value={open ? query : label}
+        placeholder="كل الملاك"
+        onFocus={() => { setQuery(''); setOpen(true); }}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        onBlur={() => setOpen(false)}
+        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-blue-500 transition-colors"
+      />
+      {open && (
+        <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl">
+          <div onMouseDown={() => pick(null)}
+            className="px-3 py-2 text-xs text-gray-400 hover:bg-gray-700 cursor-pointer border-b border-gray-700">
+            كل الملاك
+          </div>
+          {owners.length === 0 ? (
+            <div className="px-3 py-2 text-xs text-gray-500">لا نتائج</div>
+          ) : owners.map(o => (
+            <div key={o.id} onMouseDown={() => pick(o)}
+              className="px-3 py-2 text-xs text-gray-200 cursor-pointer hover:bg-gray-700">
+              {o.name}
+              <span className="text-gray-500 font-mono mr-2">{o.owner_code}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PropertiesPage() {
   const qc = useQueryClient();
   const [search, setSearch]         = useState('');
   const [filters, setFilters]       = useState({});
+  const [ownerLabel, setOwnerLabel] = useState('');
   const [showForm, setShowForm]     = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   const [editing, setEditing]       = useState(null);
@@ -68,7 +119,7 @@ export default function PropertiesPage() {
     staleTime: 30_000,
   });
 
-  const resetFilters = () => { setFilters({}); setSearch(''); };
+  const resetFilters = () => { setFilters({}); setSearch(''); setOwnerLabel(''); };
   const hasActiveFilters = search || Object.values(filters).some(v => v);
 
   const deleteMut = useMutation({
@@ -114,7 +165,6 @@ export default function PropertiesPage() {
     } catch { toast.error('فشل التصدير'); }
   };
 
-  if (isLoading) return <Loading />;
   if (error)     return <ErrorMsg />;
 
   return (
@@ -124,7 +174,6 @@ export default function PropertiesPage() {
         subtitle="عرض وإدارة جميع العقارات المسجلة"
         actions={
           <>
-            <SearchBox value={search} onChange={setSearch} placeholder="بحث بالاسم أو الكود أو المالك..." />
             <Btn variant="outline" onClick={() => setShowExport(true)}>
               <Download size={14}/> تصدير
             </Btn>
@@ -148,12 +197,19 @@ export default function PropertiesPage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div>
-              <label className="block text-[10px] text-gray-500 mb-1">اسم المالك</label>
+              <label className="block text-[10px] text-gray-500 mb-1">اسم العقار</label>
               <Input
-                placeholder="ابحث باسم المالك..."
-                value={filters.owner_name || ''}
-                onChange={e => setFilters(f => ({ ...f, owner_name: e.target.value }))}
+                placeholder="ابحث باسم العقار..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
                 className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">المالك</label>
+              <OwnerCombobox
+                label={ownerLabel}
+                onChange={({ id, name }) => { setFilters(f => ({ ...f, owner_id: id })); setOwnerLabel(name); }}
               />
             </div>
             <div>
@@ -272,6 +328,7 @@ export default function PropertiesPage() {
         </div>
 
         {/* Cards Grid */}
+        {isLoading && <Loading />}
         <div className="grid grid-cols-3 gap-4">
           {data?.data?.data?.map(prop => (
             <div key={prop.id}
