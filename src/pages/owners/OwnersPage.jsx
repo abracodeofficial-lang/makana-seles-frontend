@@ -116,6 +116,46 @@ export default function OwnersPage() {
       />
 
       <div className="p-6 space-y-6">
+        {/* Stats */}
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-4">
+          <StatCard label="إجمالي الملاك"       value={stats.total}               icon={<Users size={18}/>}      color="blue" />
+          <StatCard label="ملاك أفراد"          value={stats.individuals}         icon={<Users size={18}/>}      color="green" />
+          <StatCard label="مطورون"               value={stats.developers}          icon={<Building2 size={18}/>}  color="purple" />
+          <StatCard label="مكاتب"                value={stats.offices}             icon={<Building2 size={18}/>}  color="amber" />
+          <StatCard label="مشاريع"               value={stats.projects}            icon={<Star size={18}/>}       color="teal" />
+          <StatCard label="عقارات مضافة"        value={stats.properties_added}    icon={<Building2 size={18}/>}  color="blue" />
+          <StatCard label="عقارات مقبولة"       value={stats.properties_accepted} icon={<CheckCircle size={18}/>} color="green" />
+          <StatCard label="عقارات موثّقة رسمياً" value={stats.properties_verified} icon={<ShieldCheck size={18}/>} color="purple" />
+        </div>
+
+        {/* توزيع الملاك والعقارات */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">حسب نوع المالك</p>
+            {byOwnerType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+              <div className="flex flex-wrap gap-2">
+                {byOwnerType.map(t => <Badge key={t.label} label={`${t.label} (${t.count})`} color={TYPE_COLOR[t.label] || 'gray'} />)}
+              </div>
+            )}
+          </div>
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">عقاراتهم حسب النوع</p>
+            {byPropertyType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+              <div className="flex flex-wrap gap-2">
+                {byPropertyType.map(t => <Badge key={t.label} label={`${t.label} (${t.count})`} color="blue" />)}
+              </div>
+            )}
+          </div>
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">عقاراتهم حسب الاتجاه</p>
+            {byDirection.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+              <div className="flex flex-wrap gap-2">
+                {byDirection.map(d => <Badge key={d.label} label={`${d.label} (${d.count})`} color="teal" />)}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
@@ -256,46 +296,6 @@ export default function OwnersPage() {
                 className="text-xs py-1.5 w-full"
               />
             </div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-4">
-          <StatCard label="إجمالي الملاك"       value={stats.total}               icon={<Users size={18}/>}      color="blue" />
-          <StatCard label="ملاك أفراد"          value={stats.individuals}         icon={<Users size={18}/>}      color="green" />
-          <StatCard label="مطورون"               value={stats.developers}          icon={<Building2 size={18}/>}  color="purple" />
-          <StatCard label="مكاتب"                value={stats.offices}             icon={<Building2 size={18}/>}  color="amber" />
-          <StatCard label="مشاريع"               value={stats.projects}            icon={<Star size={18}/>}       color="teal" />
-          <StatCard label="عقارات مضافة"        value={stats.properties_added}    icon={<Building2 size={18}/>}  color="blue" />
-          <StatCard label="عقارات مقبولة"       value={stats.properties_accepted} icon={<CheckCircle size={18}/>} color="green" />
-          <StatCard label="عقارات موثّقة رسمياً" value={stats.properties_verified} icon={<ShieldCheck size={18}/>} color="purple" />
-        </div>
-
-        {/* توزيع الملاك والعقارات */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">حسب نوع المالك</p>
-            {byOwnerType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-              <div className="flex flex-wrap gap-2">
-                {byOwnerType.map(t => <Badge key={t.label} label={`${t.label} (${t.count})`} color={TYPE_COLOR[t.label] || 'gray'} />)}
-              </div>
-            )}
-          </div>
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">عقاراتهم حسب النوع</p>
-            {byPropertyType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-              <div className="flex flex-wrap gap-2">
-                {byPropertyType.map(t => <Badge key={t.label} label={`${t.label} (${t.count})`} color="blue" />)}
-              </div>
-            )}
-          </div>
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">عقاراتهم حسب الاتجاه</p>
-            {byDirection.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-              <div className="flex flex-wrap gap-2">
-                {byDirection.map(d => <Badge key={d.label} label={`${d.label} (${d.count})`} color="teal" />)}
-              </div>
-            )}
           </div>
         </div>
 

@@ -247,6 +247,26 @@ export default function AttendancePage() {
       />
 
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        {/* إحصائيات */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <StatCard label="حاضرون"   value={stats.present  || 0} icon={<UserCheck size={18}/>} color="green" />
+          <StatCard label="متأخرون"  value={stats.late     || 0} icon={<Clock size={18}/>}     color="amber" />
+          <StatCard label="غائبون"   value={stats.absent   || 0} icon={<UserX size={18}/>}     color="red"   />
+          <StatCard label="في إجازة" value={stats.on_leave || 0} icon={<Palmtree size={18}/>}  color="blue"  />
+        </div>
+
+        {/* شريط التاريخ */}
+        <div className="flex items-center gap-2 text-sm text-gray-400">
+          <span className="font-semibold text-gray-200">{rangeLabel}</span>
+          <span>·</span>
+          <span>{records.length} سجل</span>
+          <button
+            onClick={() => refetch()}
+            className="mr-auto flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+          >
+            <RefreshCw size={12}/> تحديث
+          </button>
+        </div>
 
         {/* الفلاتر */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
@@ -287,27 +307,6 @@ export default function AttendancePage() {
                 options={shifts.map(s => ({ value: String(s.id), label: s.name }))} />
             </div>
           </div>
-        </div>
-
-        {/* إحصائيات */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <StatCard label="حاضرون"   value={stats.present  || 0} icon={<UserCheck size={18}/>} color="green" />
-          <StatCard label="متأخرون"  value={stats.late     || 0} icon={<Clock size={18}/>}     color="amber" />
-          <StatCard label="غائبون"   value={stats.absent   || 0} icon={<UserX size={18}/>}     color="red"   />
-          <StatCard label="في إجازة" value={stats.on_leave || 0} icon={<Palmtree size={18}/>}  color="blue"  />
-        </div>
-
-        {/* شريط التاريخ */}
-        <div className="flex items-center gap-2 text-sm text-gray-400">
-          <span className="font-semibold text-gray-200">{rangeLabel}</span>
-          <span>·</span>
-          <span>{records.length} سجل</span>
-          <button
-            onClick={() => refetch()}
-            className="mr-auto flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-          >
-            <RefreshCw size={12}/> تحديث
-          </button>
         </div>
 
         {/* جدول الحضور */}

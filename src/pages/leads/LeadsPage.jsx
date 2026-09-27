@@ -144,6 +144,35 @@ export default function LeadsPage() {
       />
 
       <div className="p-6 space-y-6">
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4">
+          <StatCard label="إجمالي المهتمين" value={stats.total}        icon={<Users size={18}/>}         color="blue" />
+          <StatCard label="عملاء جادون"      value={stats.serious}      icon={<TrendingUp size={18}/>}    color="green" />
+          <StatCard label="زيارات اليوم"     value={stats.today_visits} icon={<Calendar size={18}/>}      color="amber" />
+          <StatCard label="استفسارات"        value={stats.inquiries}    icon={<MessageSquare size={18}/>} color="purple" />
+        </div>
+
+        {/* توزيعات لوحة المهتمين */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            ['حسب الميزانية', byBudget, 'blue'],
+            ['حسب الاتجاه',   byDirection, 'teal'],
+            ['حسب النوع',     byType, 'blue'],
+            ['حسب الحالة',    byStatus, 'amber'],
+            ['حسب الأوبريشن', byOperation, 'purple'],
+            ['حسب الأخصائي',  bySpecialist, 'green'],
+          ].map(([title, list, color]) => (
+            <div key={title} className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">{title}</p>
+              {list.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+                <div className="flex flex-wrap gap-2">
+                  {list.map(item => <Badge key={item.label} label={`${item.label} (${item.count})`} color={color} />)}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
         {/* Filters */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
@@ -333,35 +362,6 @@ export default function LeadsPage() {
               />
             </div>
           </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <StatCard label="إجمالي المهتمين" value={stats.total}        icon={<Users size={18}/>}         color="blue" />
-          <StatCard label="عملاء جادون"      value={stats.serious}      icon={<TrendingUp size={18}/>}    color="green" />
-          <StatCard label="زيارات اليوم"     value={stats.today_visits} icon={<Calendar size={18}/>}      color="amber" />
-          <StatCard label="استفسارات"        value={stats.inquiries}    icon={<MessageSquare size={18}/>} color="purple" />
-        </div>
-
-        {/* توزيعات لوحة المهتمين */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            ['حسب الميزانية', byBudget, 'blue'],
-            ['حسب الاتجاه',   byDirection, 'teal'],
-            ['حسب النوع',     byType, 'blue'],
-            ['حسب الحالة',    byStatus, 'amber'],
-            ['حسب الأوبريشن', byOperation, 'purple'],
-            ['حسب الأخصائي',  bySpecialist, 'green'],
-          ].map(([title, list, color]) => (
-            <div key={title} className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">{title}</p>
-              {list.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-                <div className="flex flex-wrap gap-2">
-                  {list.map(item => <Badge key={item.label} label={`${item.label} (${item.count})`} color={color} />)}
-                </div>
-              )}
-            </div>
-          ))}
         </div>
 
         {/* Tabs */}

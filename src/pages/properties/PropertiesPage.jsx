@@ -206,6 +206,43 @@ export default function PropertiesPage() {
       />
 
       <div className="p-6 space-y-6">
+        {/* Stats */}
+        <div className="grid grid-cols-5 gap-4">
+          <StatCard label="إجمالي العقارات"    value={stats.total}     icon={<Building2 size={18}/>}   color="blue" />
+          <StatCard label="متاح"                value={stats.available} icon={<CheckCircle size={18}/>} color="green" />
+          <StatCard label="محجوز"               value={stats.reserved}  icon={<Clock size={18}/>}       color="amber" />
+          <StatCard label="مباع"                value={stats.sold}      icon={<XCircle size={18}/>}     color="red" />
+          <StatCard label="جاري تسويقها"        value={stats.marketing} icon={<TrendingUp size={18}/>}  color="purple" />
+        </div>
+
+        {/* توزيع حسب النوع والاتجاه */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+              <Building2 size={12}/> حسب نوع العقار
+            </p>
+            {byType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+              <div className="flex flex-wrap gap-2">
+                {byType.map(t => (
+                  <Badge key={t.label} label={`${t.label} (${t.count})`} color="blue" />
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+              <Compass size={12}/> حسب الاتجاه
+            </p>
+            {byDirection.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
+              <div className="flex flex-wrap gap-2">
+                {byDirection.map(d => (
+                  <Badge key={d.label} label={`${d.label} (${d.count})`} color="teal" />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
@@ -330,43 +367,6 @@ export default function PropertiesPage() {
                 className="text-xs py-1.5 w-full"
               />
             </div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-5 gap-4">
-          <StatCard label="إجمالي العقارات"    value={stats.total}     icon={<Building2 size={18}/>}   color="blue" />
-          <StatCard label="متاح"                value={stats.available} icon={<CheckCircle size={18}/>} color="green" />
-          <StatCard label="محجوز"               value={stats.reserved}  icon={<Clock size={18}/>}       color="amber" />
-          <StatCard label="مباع"                value={stats.sold}      icon={<XCircle size={18}/>}     color="red" />
-          <StatCard label="جاري تسويقها"        value={stats.marketing} icon={<TrendingUp size={18}/>}  color="purple" />
-        </div>
-
-        {/* توزيع حسب النوع والاتجاه */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-              <Building2 size={12}/> حسب نوع العقار
-            </p>
-            {byType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-              <div className="flex flex-wrap gap-2">
-                {byType.map(t => (
-                  <Badge key={t.label} label={`${t.label} (${t.count})`} color="blue" />
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-              <Compass size={12}/> حسب الاتجاه
-            </p>
-            {byDirection.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-              <div className="flex flex-wrap gap-2">
-                {byDirection.map(d => (
-                  <Badge key={d.label} label={`${d.label} (${d.count})`} color="teal" />
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
