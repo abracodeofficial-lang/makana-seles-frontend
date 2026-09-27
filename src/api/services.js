@@ -92,6 +92,7 @@ export const attendanceApi = {
   store:   (data)   => client.post('/attendance', data),
   approve: (id)     => client.patch(`/attendance/${id}/approve`),
   export:  (params) => client.get('/attendance/export', { params }),
+  online:  ()       => client.get('/attendance/online'),
 };
 
 // وقت/تاريخ جهاز الموظف نفسه (مو وقت السيرفر) — يُرسل مع كل بصمة

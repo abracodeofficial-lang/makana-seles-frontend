@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import useAuthStore from '../../store/authStore';
+import { attendanceApi } from '../../api/services';
 import { Avatar } from '../ui';
 import {
   Home, Building2, Users, UserCheck, Clock, Calendar,
@@ -160,10 +162,45 @@ export default function Layout() {
           </button>
         </div>
 
+        <OnlineBar />
+
         <div className="flex-1 overflow-y-auto">
           <Outlet />
         </div>
       </main>
+    </div>
+  );
+}
+
+// ── شريط "متصل الآن" — الموظفون الحاضرون حالياً (بصموا حضور ولسا ما بصموا انصراف) ──
+const fmtHM = (t) => t ? t.slice(0, 5) : '';
+
+function OnlineBar() {
+  const { data } = useQuery({
+    queryKey: ['attendance-online'],
+    queryFn:  () => attendanceApi.online().then(r => r.data.data),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+  const online = data || [];
+
+  if (online.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-2 bg-gray-900/60 border-b border-gray-800 flex-shrink-0 overflow-x-auto">
+      <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 flex-shrink-0">
+        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+        متصل الآن ({online.length})
+      </span>
+      <div className="flex items-center gap-3">
+        {online.map(o => (
+          <div key={o.employee_id} className="relative flex-shrink-0"
+            title={`${o.full_name}${o.job_title ? ' — ' + o.job_title : ''}${o.department ? ' · ' + o.department : ''}${o.shift_end ? '\nيخلص دوامه: ' + fmtHM(o.shift_end) : ''}`}>
+            <Avatar name={o.full_name} size="sm" />
+            <span className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-gray-900" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
