@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import useAuthStore from '../../store/authStore';
@@ -175,7 +175,45 @@ export default function Layout() {
 // ── شريط "متصل الآن" — الموظفون الحاضرون حالياً (بصموا حضور ولسا ما بصموا انصراف) ──
 const fmtHM = (t) => t ? t.slice(0, 5) : '';
 
+// "4 س 15 د" / "35 د"
+const fmtDuration = (mins) => {
+  const h = Math.floor(mins / 60), m = mins % 60;
+  if (h === 0) return `${m} د`;
+  return m === 0 ? `${h} س` : `${h} س ${m} د`;
+};
+
+// الدقائق المتبقية لنهاية الدوام (سالبة = تجاوز نهاية الدوام).
+// لو الدوام ليلي (نهايته قبل وقت البصمة) منعتبر النهاية باليوم التالي.
+const minutesUntilShiftEnd = (shiftEnd, checkIn, now) => {
+  const [eh, em] = shiftEnd.split(':').map(Number);
+  const end = new Date(now);
+  end.setHours(eh, em, 0, 0);
+  const inMatch = checkIn && String(checkIn).match(/(\d{1,2}):(\d{2})/);
+  if (inMatch) {
+    const inMins = Number(inMatch[1]) * 60 + Number(inMatch[2]);
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    if (eh * 60 + em < inMins && nowMins >= inMins) end.setDate(end.getDate() + 1);
+  }
+  return Math.round((end - now) / 60000);
+};
+
+const remainingLabel = (o, now) => {
+  if (!o.shift_end) return '';
+  const mins = minutesUntilShiftEnd(o.shift_end, o.check_in, now);
+  const status = mins > 0
+    ? `المتبقي من الدوام: ${fmtDuration(mins)}`
+    : mins === 0 ? 'دوامه خالص هلق' : `تجاوز نهاية الدوام بـ ${fmtDuration(-mins)}`;
+  return `\nيخلص دوامه: ${fmtHM(o.shift_end)}\n${status}`;
+};
+
 function OnlineBar() {
+  // تحديث الوقت الحالي كل 30 ثانية حتى يضل "المتبقي" دقيق
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   const { data } = useQuery({
     queryKey: ['attendance-online'],
     queryFn:  () => attendanceApi.online().then(r => r.data.data),
@@ -195,7 +233,7 @@ function OnlineBar() {
       <div className="flex items-center gap-3">
         {online.map(o => (
           <div key={o.employee_id} className="relative flex-shrink-0"
-            title={`${o.full_name}${o.job_title ? ' — ' + o.job_title : ''}${o.department ? ' · ' + o.department : ''}${o.shift_end ? '\nيخلص دوامه: ' + fmtHM(o.shift_end) : ''}`}>
+            title={`${o.full_name}${o.job_title ? ' — ' + o.job_title : ''}${o.department ? ' · ' + o.department : ''}${remainingLabel(o, now)}`}>
             <Avatar name={o.full_name} size="sm" />
             <span className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-gray-900" />
           </div>

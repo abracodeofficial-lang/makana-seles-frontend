@@ -4,7 +4,9 @@
 
 * { box-sizing: border-box; }
 :root { color-scheme: dark; }
-body { font-family: 'Cairo', sans-serif; }
+body { font-family: 'Cairo', sans-serif; @apply bg-gray-950 text-gray-200; }
+::selection { background: rgba(191, 136, 87, 0.35); color: #F7EAD2; }
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #4B3D37; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #6E5C51; }

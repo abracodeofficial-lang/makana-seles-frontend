@@ -223,7 +223,7 @@ export function ErrorMsg({ message = 'حدث خطأ في تحميل البيان
 
 export function Avatar({ name = '', size = 'md' }) {
   const safeName = name || '';
-  const colors   = ['bg-blue-600', 'bg-emerald-600', 'bg-amber-600', 'bg-purple-600', 'bg-rose-600', 'bg-teal-600'];
+  const colors   = ['bg-blue-600', 'bg-brand-primary', 'bg-red-600', 'bg-purple-600', 'bg-teal-600', 'bg-blue-800'];
   const color    = safeName.length > 0 ? colors[safeName.charCodeAt(0) % colors.length] : colors[0];
   const sizes    = { sm: 'w-8 h-8 text-xs', md: 'w-10 h-10 text-sm', lg: 'w-14 h-14 text-base' };
   const initials = safeName.split(' ').slice(0, 2).map(w => w[0]).join('');
