@@ -157,6 +157,14 @@ export const operationAssignmentsApi = {
   delete: (id)     => client.delete(`/lookups/operation-assignments/${id}`),
 };
 
+// ── PUSH (إشعارات الجهاز)
+export const pushApi = {
+  publicKey:   ()     => client.get('/push/public-key'),
+  subscribe:   (sub)  => client.post('/push/subscribe', sub),
+  unsubscribe: (endpoint) => client.post('/push/unsubscribe', { endpoint }),
+  test:        ()     => client.post('/push/test'),
+};
+
 // ── NOTIFICATIONS
 export const notificationsApi = {
   list:        (params) => client.get('/notifications', { params }),

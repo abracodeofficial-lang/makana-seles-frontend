@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import useAuthStore from '../../store/authStore';
-import { attendanceApi } from '../../api/services';
+import toast from 'react-hot-toast';
+import { attendanceApi, pushApi } from '../../api/services';
+import { pushSupported, enablePush, syncPush, isIOS, isStandalone } from '../../lib/push';
 import { Avatar } from '../ui';
 import {
   Home, Building2, Users, UserCheck, Clock, Calendar,
-  FileCheck, Bell, LogOut, Menu, X, Fingerprint, Settings, BarChart2, ShieldCheck,
+  FileCheck, Bell, BellRing, LogOut, Menu, X, Fingerprint, Settings, BarChart2, ShieldCheck,
 } from 'lucide-react';
 
 const NAV = [
@@ -163,6 +165,7 @@ export default function Layout() {
         </div>
 
         <OnlineBar />
+        <PushPrompt />
 
         <div className="flex-1 overflow-y-auto">
           <Outlet />
@@ -239,6 +242,73 @@ function OnlineBar() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── شريط تفعيل إشعارات الجهاز (تذكير بداية/نهاية الدوام) ──
+const PUSH_DISMISS_KEY = 'push-prompt-dismissed';
+
+const readDismissed = () => {
+  try { return localStorage.getItem(PUSH_DISMISS_KEY) === new Date().toDateString(); } catch { return false; }
+};
+
+function PushPrompt() {
+  const [hidden,  setHidden]  = useState(readDismissed);
+  const [loading, setLoading] = useState(false);
+  const [perm,    setPerm]    = useState(() => (pushSupported() ? Notification.permission : 'unsupported'));
+
+  // الإذن معطى مسبقاً → منتأكد إن الاشتراك مربوط بالحساب الحالي
+  useEffect(() => { if (perm === 'granted') syncPush(); }, [perm]);
+
+  const dismiss = () => {
+    try { localStorage.setItem(PUSH_DISMISS_KEY, new Date().toDateString()); } catch {}
+    setHidden(true);
+  };
+
+  const enable = async () => {
+    setLoading(true);
+    try {
+      await enablePush();
+      setPerm('granted');
+      toast.success('تم تفعيل الإشعارات على هذا الجهاز');
+      pushApi.test().catch(() => {});
+    } catch (e) {
+      setPerm(pushSupported() ? Notification.permission : 'unsupported');
+      toast.error(e.message === 'denied'
+        ? 'تم رفض الإذن — فعّل الإشعارات من إعدادات المتصفح للموقع'
+        : 'تعذّر تفعيل الإشعارات على هذا المتصفح');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (hidden) return null;
+
+  // آيفون بدون إضافة للشاشة الرئيسية: Safari ما بيدعم الإشعارات إلا هيك
+  const iosHint = perm === 'unsupported' && isIOS() && !isStandalone();
+  const denied  = perm === 'denied';
+  if (perm !== 'default' && !iosHint && !denied) return null;
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-2.5 bg-blue-500/10 border-b border-blue-500/20 flex-shrink-0">
+      <BellRing size={16} className="text-blue-400 flex-shrink-0" />
+      <p className="flex-1 text-xs sm:text-sm text-gray-200">
+        {iosHint
+          ? 'لتوصلك تذكيرات الدوام على الآيفون: اضغط زر المشاركة ثم "إضافة إلى الشاشة الرئيسية" وافتح النظام من هناك.'
+          : denied
+            ? 'الإشعارات محظورة لهذا الموقع — اضغط على أيقونة القفل 🔒 جنب الرابط واسمح بالإشعارات حتى يوصلك تذكير بداية ونهاية الدوام.'
+            : 'فعّل إشعارات الجهاز ليوصلك تذكير قبل بداية دوامك بـ10 دقائق وعند نهايته.'}
+      </p>
+      {!iosHint && !denied && (
+        <button onClick={enable} disabled={loading}
+          className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex-shrink-0 disabled:opacity-60">
+          {loading ? 'جارٍ التفعيل…' : 'تفعيل'}
+        </button>
+      )}
+      <button onClick={dismiss} className="text-gray-500 hover:text-gray-300 flex-shrink-0" title="لاحقاً">
+        <X size={16} />
+      </button>
     </div>
   );
 }

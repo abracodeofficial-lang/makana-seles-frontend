@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi } from '../api/services';
+import { disablePush } from '../lib/push';
 
 const useAuthStore = create(
   persist(
@@ -21,6 +22,7 @@ const useAuthStore = create(
       },
 
       logout: async () => {
+        await disablePush();
         try { await authApi.logout(); } catch {}
         localStorage.removeItem('token');
         set({ token: null, employee: null, permissions: {} });

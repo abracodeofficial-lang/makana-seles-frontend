@@ -1,0 +1,14 @@
+{
+  "name": "نظام مكانة",
+  "short_name": "مكانة",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#19130F",
+  "theme_color": "#19130F",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
