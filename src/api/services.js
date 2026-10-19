@@ -157,6 +157,20 @@ export const operationAssignmentsApi = {
   delete: (id)     => client.delete(`/lookups/operation-assignments/${id}`),
 };
 
+// ── رسائل واتساب جماعية
+export const broadcastApi = {
+  recipients:      (params)        => client.get('/broadcast/recipients', { params }),
+  lists:           (audience)      => client.get('/broadcast/lists', { params: { audience } }),
+  createList:      (data)          => client.post('/broadcast/lists', data),
+  updateList:      (id, data)      => client.put(`/broadcast/lists/${id}`, data),
+  deleteList:      (id)            => client.delete(`/broadcast/lists/${id}`),
+  campaigns:       (params)        => client.get('/broadcast/campaigns', { params }),
+  createCampaign:  (data)          => client.post('/broadcast/campaigns', data),
+  campaign:        (id)            => client.get(`/broadcast/campaigns/${id}`),
+  setRecipient:    (id, rid, status) => client.patch(`/broadcast/campaigns/${id}/recipients/${rid}`, { status }),
+  deleteCampaign:  (id)            => client.delete(`/broadcast/campaigns/${id}`),
+};
+
 // ── PUSH (إشعارات الجهاز)
 export const pushApi = {
   publicKey:   ()     => client.get('/push/public-key'),

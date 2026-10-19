@@ -20,6 +20,7 @@ const ProfilePage      = lazy(() => import('./pages/profile/ProfilePage'));
 const SettingsPage     = lazy(() => import('./pages/settings/SettingsPage'));
 const ReportsPage      = lazy(() => import('./pages/reports/ReportsPage'));
 const RolesPage        = lazy(() => import('./pages/roles/RolesPage'));
+const BroadcastPage    = lazy(() => import('./pages/broadcast/BroadcastPage'));
 
 function Dashboard() {
   const { employee } = useAuthStore();
@@ -116,6 +117,13 @@ export default function App() {
                   <LeadsPage />
                 </Suspense>
               </ProtectedRoute>
+            } />
+
+            {/* الصلاحية جوّا الصفحة: ملاك و/أو مهتمين */}
+            <Route path="/broadcast" element={
+              <Suspense fallback={<Loading />}>
+                <BroadcastPage />
+              </Suspense>
             } />
 
             <Route path="/employees" element={

@@ -8,7 +8,7 @@ import { pushSupported, enablePush, syncPush, isIOS, isStandalone } from '../../
 import { Avatar } from '../ui';
 import {
   Home, Building2, Users, UserCheck, Clock, Calendar,
-  FileCheck, Bell, BellRing, LogOut, Menu, X, Fingerprint, Settings, BarChart2, ShieldCheck,
+  FileCheck, Bell, BellRing, MessageCircle, LogOut, Menu, X, Fingerprint, Settings, BarChart2, ShieldCheck,
 } from 'lucide-react';
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
   { label: 'العقارات',         path: '/properties',   icon: Building2,   section: 'المبيعات',         perm: 'properties' },
   { label: 'الملاك',           path: '/owners',        icon: Users,       section: 'المبيعات',         perm: 'owners' },
   { label: 'المهتمون',         path: '/leads',         icon: UserCheck,   section: 'المبيعات',         perm: 'leads' },
+  { label: 'رسائل واتساب',     path: '/broadcast',     icon: MessageCircle, section: 'المبيعات',       perm: ['leads', 'owners'] },
   { label: 'الموظفون',         path: '/employees',     icon: Users,       section: 'الموارد البشرية', perm: 'employees' },
   { label: 'الحضور',           path: '/attendance',    icon: Clock,       section: 'الموارد البشرية', perm: 'attendance' },
   { label: 'بصمتي',            path: '/punch',         icon: Fingerprint, section: 'الموارد البشرية' },
@@ -40,7 +41,8 @@ export default function Layout() {
 
   const visibleNav = NAV.filter(item => {
     if (!item.perm) return true;
-    return permissions?.[item.perm]?.view === true;
+    // perm ممكن تكون مصفوفة: يظهر إذا عنده صلاحية على وحدة منهم
+    return [].concat(item.perm).some(p => permissions?.[p]?.view === true);
   });
 
   const sections = ['المبيعات', 'الموارد البشرية', null];
