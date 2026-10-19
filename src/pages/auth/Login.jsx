@@ -37,7 +37,7 @@ export default function Login() {
           <Input
             label="البريد الإلكتروني"
             type="email"
-            placeholder="admin@company.com"
+            placeholder="name@makanasa.com"
             value={form.email}
             onChange={e => setForm({ ...form, email: e.target.value })}
             required
@@ -54,10 +54,6 @@ export default function Login() {
             تسجيل الدخول
           </Btn>
         </form>
-
-        <p className="text-center text-xs text-gray-600 mt-4">
-          admin@company.com / Admin@123456
-        </p>
       </div>
     </div>
   );
