@@ -5,6 +5,21 @@
 * { box-sizing: border-box; }
 :root { color-scheme: dark; }
 body { font-family: 'Cairo', sans-serif; @apply bg-gray-950 text-gray-200; }
+/* محتوى المحرر المنسّق (المحرر + العرض) — preflight بيصفّر القوائم والعناوين */
+.rich-content { line-height: 1.8; word-break: break-word; }
+.rich-content > * + * { margin-top: 0.4em; }
+.rich-content h2 { font-size: 1.15em; font-weight: 800; color: #F7EAD2; }
+.rich-content h3 { font-size: 1.02em; font-weight: 700; color: #EBDCC5; }
+.rich-content ul { list-style: disc; padding-inline-start: 1.4em; }
+.rich-content ol { list-style: decimal; padding-inline-start: 1.4em; }
+.rich-content li > p { margin: 0; }
+.rich-content li::marker { color: #BF8857; }
+.rich-content strong { font-weight: 800; color: #F7EAD2; }
+.rich-content hr { border: 0; border-top: 1px solid #4B3D37; margin: 0.8em 0; }
+.rich-content mark { color: #19130F; border-radius: 3px; padding: 0 2px; }
+.rich-content p:empty::before { content: '\00a0'; }
+.ProseMirror:focus { outline: none; }
+
 ::selection { background: rgba(191, 136, 87, 0.35); color: #F7EAD2; }
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

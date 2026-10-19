@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
@@ -9,11 +9,23 @@ import {
   Textarea, Loading, ErrorMsg, InfoRow, Avatar,
   Table, Tr, Td,
 } from '../../components/ui';
+import { RichText } from '../../components/ui/RichText';
+// المحرر (TipTap) تقيل — بينحمّل بس لما ينفتح فورم العقار
+const RichTextEditor = lazy(() => import('../../components/ui/RichTextEditor'));
 import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, ChevronDown, MessageCircle, Phone, MapPin, Home, X, Download, Compass, TrendingUp } from 'lucide-react';
 
 const STATUS_COLOR = { 'متاح': 'green', 'محجوز': 'amber', 'مباع': 'red', 'قيد المراجعة': 'purple' };
 const MEDIA_COLOR  = { 'تم': 'green', 'جاري': 'amber', 'معلق': 'red', 'ملغي': 'gray', 'جديد': 'blue' };
 const todayISO      = () => new Date().toISOString().slice(0, 10);
+
+// واجهة العقار: بتنحفظ كنص "شمالية، شرقية" (عقار زاوية = أكتر من واجهة)
+const FACADES = ['شمالية', 'جنوبية', 'شرقية', 'غربية'];
+const parseFacade  = (s) => (s || '').split(/[،,]/).map(x => x.trim()).filter(Boolean);
+const toggleFacade = (s, f) => {
+  const cur = parseFacade(s);
+  const next = cur.includes(f) ? cur.filter(x => x !== f) : [...cur, f];
+  return FACADES.filter(x => next.includes(x)).join('، ');
+};
 
 const waPhone = (phone = '') => {
   const d = phone.replace(/\D/g, '');
@@ -170,6 +182,8 @@ export default function PropertiesPage() {
         'المدينة':        p.city?.name || '—',
         'الحي':           p.neighborhood?.name || '—',
         'الاتجاه':        p.direction || '—',
+        'الواجهة':        p.facade || '—',
+        'عرض الشارع':     Number(p.street_width) || '—',
         'الحالة':         p.status,
         'السعر المعروض':  p.listed_price,
         'المساحة':        p.total_area,
@@ -511,7 +525,7 @@ export default function PropertiesPage() {
 const FORM_DEFAULTS = {
   name: '', property_type_id: '', marketing_type_id: '', usage_type_id: '',
   status: 'متاح', listed_price: 0, net_price: 0, total_area: 0,
-  city_id: '', neighborhood_id: '', street: '', direction: '',
+  city_id: '', neighborhood_id: '', street_width: '', direction: '', facade: '',
   map_url: '', latitude: '', longitude: '', nearby_places: '',
   owner_id: '', advertiser_role: 'مالك', mortgage_status: 'غير مرهون',
   mortgage_amount: 0, rental_status: 'غير مؤجر', annual_income: 0,
@@ -718,10 +732,30 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             onChange={e => set('neighborhood_id', e.target.value)}
             options={(neighborhoodsData || []).map(n => ({ value: String(n.id), label: n.name }))}
             disabled={!form.city_id} />
-          <Input label="الشارع"  value={form.street || ''}   onChange={e => set('street', e.target.value)} />
+          <Input label="عرض الشارع (متر)" value={form.street_width || ''} onChange={e => set('street_width', e.target.value)}
+            type="number" min="0" step="0.5" placeholder="مثلاً 20" />
           <Select label="الاتجاه" value={form.direction || ''} onChange={e => set('direction', e.target.value)}
             options={['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية'].map(v => ({ value: v, label: v }))} />
-          <Input label="رابط الموقع (Google Maps)" value={form.map_url || ''} onChange={e => set('map_url', e.target.value)} className="col-span-2" />
+          <div className="col-span-2 space-y-1">
+            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              واجهة العقار <span className="normal-case font-normal text-gray-500">(اختار أكتر من وحدة إذا العقار زاوية)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {FACADES.map(f => {
+                const on = parseFacade(form.facade).includes(f);
+                return (
+                  <button key={f} type="button" onClick={() => set('facade', toggleFacade(form.facade, f))}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors
+                      ${on ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500'}`}>
+                    {f}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="col-span-2">
+            <Input label="رابط الموقع (Google Maps)" value={form.map_url || ''} onChange={e => set('map_url', e.target.value)} />
+          </div>
           <Input label="خط الطول" value={form.latitude  || ''} onChange={e => set('latitude',  e.target.value)} type="number" />
           <Input label="خط العرض" value={form.longitude || ''} onChange={e => set('longitude', e.target.value)} type="number" />
           <div className="col-span-2">
@@ -825,9 +859,11 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             <Input  label="رابط الفيديو"  value={form.video_url  || ''} onChange={e => set('video_url',  e.target.value)} placeholder="https://..." />
             <Input  label="العمولة (%)"   value={form.commission_rate}  onChange={e => set('commission_rate', e.target.value)} type="number" />
           </div>
-          <Textarea label="وصف العقار"     value={form.description || ''} onChange={e => set('description', e.target.value)} rows={3} />
-          <Textarea label="مميزات العقار"  value={form.features    || ''} onChange={e => set('features',    e.target.value)} rows={2} />
-          <Textarea label="مكونات العقار"  value={form.components  || ''} onChange={e => set('components',  e.target.value)} rows={2} />
+          <Suspense fallback={<Loading />}>
+            <RichTextEditor label="وصف العقار"    value={form.description || ''} onChange={v => set('description', v)} minHeight={160} />
+            <RichTextEditor label="مميزات العقار" value={form.features    || ''} onChange={v => set('features',    v)} minHeight={110} />
+            <RichTextEditor label="مكونات العقار" value={form.components  || ''} onChange={v => set('components',  v)} minHeight={110} />
+          </Suspense>
         </div>
       )}
     </Modal>
@@ -902,8 +938,10 @@ function PropertyDetail({ id, onClose }) {
           <SectionTitle>الموقع</SectionTitle>
           <InfoRow label="المدينة"       value={p.city?.name} />
           <InfoRow label="الحي"          value={p.neighborhood?.name} />
-          <InfoRow label="الشارع"        value={p.street} />
+          {p.street && <InfoRow label="الشارع" value={p.street} />}
+          <InfoRow label="عرض الشارع"    value={Number(p.street_width) ? `${Number(p.street_width)} م` : null} />
           <InfoRow label="الاتجاه"       value={p.direction} />
+          <InfoRow label="الواجهة"       value={p.facade} />
           {p.nearby_places && <InfoRow label="مواقع قريبة" value={p.nearby_places} />}
           {p.map_url && (
             <div className="flex items-center justify-between py-1 border-b border-gray-800 text-xs">
@@ -1012,19 +1050,19 @@ function PropertyDetail({ id, onClose }) {
           {p.description && (
             <div>
               <SectionTitle>الوصف</SectionTitle>
-              <p className="text-sm text-gray-300 bg-gray-800 rounded-xl p-3 leading-relaxed">{p.description}</p>
+              <RichText html={p.description} className="text-sm text-gray-300 bg-gray-800 rounded-xl p-3" />
             </div>
           )}
           {p.features && (
             <div>
               <SectionTitle>المميزات</SectionTitle>
-              <p className="text-sm text-gray-300 bg-gray-800 rounded-xl p-3 leading-relaxed">{p.features}</p>
+              <RichText html={p.features} className="text-sm text-gray-300 bg-gray-800 rounded-xl p-3" />
             </div>
           )}
           {p.components && (
             <div>
               <SectionTitle>المكونات</SectionTitle>
-              <p className="text-sm text-gray-300 bg-gray-800 rounded-xl p-3 leading-relaxed">{p.components}</p>
+              <RichText html={p.components} className="text-sm text-gray-300 bg-gray-800 rounded-xl p-3" />
             </div>
           )}
         </div>
