@@ -183,6 +183,10 @@ export default function PropertiesPage() {
         'الحي':           p.neighborhood?.name || '—',
         'الاتجاه':        p.direction || '—',
         'الواجهة':        p.facade || '—',
+        'رقم المخطط':     p.plan_number || '—',
+        'رقم القطعة':     p.plot_number || '—',
+        'عقد وساطة':      p.has_brokerage_contract ? 'نعم' : 'لا',
+        'رقم الترخيص':    p.license_number || '—',
         'عرض الشارع':     Number(p.street_width) || '—',
         'الحالة':         p.status,
         'السعر المعروض':  p.listed_price,
@@ -381,6 +385,24 @@ export default function PropertiesPage() {
                 className="text-xs py-1.5 w-full"
               />
             </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">رقم الترخيص / المخطط / القطعة</label>
+              <Input
+                placeholder="ابحث بأي رقم منهم"
+                value={filters.search || ''}
+                onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1">عقد الوساطة</label>
+              <Select
+                options={[{ value: '1', label: 'تم عقد وساطة' }, { value: '0', label: 'بدون عقد وساطة' }]}
+                value={filters.has_brokerage_contract ?? ''}
+                onChange={e => setFilters(f => ({ ...f, has_brokerage_contract: e.target.value || undefined }))}
+                className="text-xs py-1.5 w-full"
+              />
+            </div>
           </div>
         </div>
 
@@ -525,7 +547,8 @@ export default function PropertiesPage() {
 const FORM_DEFAULTS = {
   name: '', property_type_id: '', marketing_type_id: '', usage_type_id: '',
   status: 'متاح', listed_price: 0, net_price: 0, total_area: 0,
-  city_id: '', neighborhood_id: '', street_width: '', direction: '', facade: '',
+  has_brokerage_contract: false, license_number: '',
+  city_id: '', neighborhood_id: '', plan_number: '', plot_number: '', street_width: '', direction: '', facade: '',
   map_url: '', latitude: '', longitude: '', nearby_places: '',
   owner_id: '', advertiser_role: 'مالك', mortgage_status: 'غير مرهون',
   mortgage_amount: 0, rental_status: 'غير مؤجر', annual_income: 0,
@@ -719,6 +742,11 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
           <Input label="السعر المعروض (ريال)" value={form.listed_price} onChange={e => set('listed_price', e.target.value)} type="number" />
           <Input label="السعر الصافي (ريال)"  value={form.net_price}    onChange={e => set('net_price', e.target.value)}    type="number" />
           <Input label="المساحة (م²)"          value={form.total_area}   onChange={e => set('total_area', e.target.value)}   type="number" />
+          <Select label="هل انعمل عقد وساطة؟" clearable={false}
+            value={form.has_brokerage_contract ? 'نعم' : 'لا'}
+            onChange={e => set('has_brokerage_contract', e.target.value === 'نعم')}
+            options={[{ value: 'نعم', label: 'نعم' }, { value: 'لا', label: 'لا' }]} />
+          <Input label="رقم الترخيص" value={form.license_number || ''} onChange={e => set('license_number', e.target.value)} dir="ltr" />
         </div>
       )}
 
@@ -732,6 +760,8 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             onChange={e => set('neighborhood_id', e.target.value)}
             options={(neighborhoodsData || []).map(n => ({ value: String(n.id), label: n.name }))}
             disabled={!form.city_id} />
+          <Input label="رقم المخطط" value={form.plan_number || ''} onChange={e => set('plan_number', e.target.value)} dir="ltr" />
+          <Input label="رقم القطعة" value={form.plot_number || ''} onChange={e => set('plot_number', e.target.value)} dir="ltr" />
           <Input label="عرض الشارع (متر)" value={form.street_width || ''} onChange={e => set('street_width', e.target.value)}
             type="number" min="0" step="0.5" placeholder="مثلاً 20" />
           <Select label="الاتجاه" value={form.direction || ''} onChange={e => set('direction', e.target.value)}
@@ -938,6 +968,8 @@ function PropertyDetail({ id, onClose }) {
           <SectionTitle>الموقع</SectionTitle>
           <InfoRow label="المدينة"       value={p.city?.name} />
           <InfoRow label="الحي"          value={p.neighborhood?.name} />
+          <InfoRow label="رقم المخطط"    value={p.plan_number} />
+          <InfoRow label="رقم القطعة"    value={p.plot_number} />
           {p.street && <InfoRow label="الشارع" value={p.street} />}
           <InfoRow label="عرض الشارع"    value={Number(p.street_width) ? `${Number(p.street_width)} م` : null} />
           <InfoRow label="الاتجاه"       value={p.direction} />
@@ -955,6 +987,9 @@ function PropertyDetail({ id, onClose }) {
 
           <SectionTitle>تفاصيل العقار</SectionTitle>
           <InfoRow label="نوع التسويق"  value={p.marketing_type?.name} />
+          <InfoRow label="عقد الوساطة"   value={p.has_brokerage_contract ? 'تم ✓' : 'لا'}
+            valueClass={p.has_brokerage_contract ? 'text-green-400' : 'text-gray-400'} />
+          <InfoRow label="رقم الترخيص"   value={p.license_number} />
           <InfoRow label="المساحة"       value={p.total_area ? `${p.total_area} م²` : null} />
           <InfoRow label="الغرف"         value={p.rooms_count} />
           <InfoRow label="الحمامات"      value={p.bathrooms_count} />
