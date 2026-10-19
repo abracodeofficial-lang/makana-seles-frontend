@@ -169,6 +169,13 @@ export const broadcastApi = {
   campaign:        (id)            => client.get(`/broadcast/campaigns/${id}`),
   setRecipient:    (id, rid, status) => client.patch(`/broadcast/campaigns/${id}/recipients/${rid}`, { status }),
   deleteCampaign:  (id)            => client.delete(`/broadcast/campaigns/${id}`),
+  autoSend:        (id, action)    => client.patch(`/broadcast/campaigns/${id}/auto`, { action }),
+  // ربط الواتساب (برنامج كمبيوتر المكتب)
+  gateway:         ()              => client.get('/broadcast/gateway'),
+  gatewaySettings: (data)          => client.put('/broadcast/gateway/settings', data),
+  gatewayLogout:   ()              => client.post('/broadcast/gateway/logout'),
+  gatewayToken:    ()              => client.post('/broadcast/gateway/token'),
+  gatewayDownload: ()              => client.get('/broadcast/gateway/download', { responseType: 'blob' }),
 };
 
 // ── PUSH (إشعارات الجهاز)

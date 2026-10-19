@@ -25,7 +25,10 @@ const DIRECTIONS         = ['شمالية','جنوبية','شرقية','غربي
 const opts = (arr) => arr.map(v => ({ value: v, label: v }));
 
 const DAILY_SAFE_LIMIT = 50;
-const STATUS_BADGE = { pending: ['بالانتظار', 'gray'], sent: ['انبعتت', 'green'], skipped: ['تخطّي', 'amber'] };
+const STATUS_BADGE = {
+  pending: ['بالانتظار', 'gray'], sending: ['جاري الإرسال', 'blue'], sent: ['انبعتت', 'green'],
+  skipped: ['تخطّي', 'amber'], failed: ['فشل', 'red'],
+};
 
 // 0501234567 → 966501234567
 const waPhone = (p = '') => {
@@ -54,6 +57,7 @@ export default function BroadcastPage() {
   const [audience, setAudience]     = useState(allowed[0]);
   const [view, setView]             = useState('compose');   // compose | history | run
   const [campaignId, setCampaignId] = useState(null);
+  const [gatewayOpen, setGatewayOpen] = useState(false);
 
   if (allowed.length === 0) {
     return <div className="flex items-center justify-center h-64 text-gray-500 text-sm">🔒 ليس لديك صلاحية على الملاك أو المهتمين</div>;
@@ -67,7 +71,8 @@ export default function BroadcastPage() {
         title="رسائل واتساب جماعية"
         subtitle="رسالة وحدة لمجموعة عملاء — بتنبعت من واتساب الموظف بفواصل زمنية آمنة"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <GatewayButton onClick={() => setGatewayOpen(true)} />
             <Btn variant={view === 'history' ? 'primary' : 'outline'} onClick={() => setView('history')}>
               <History size={15} /> سجل الحملات
             </Btn>
@@ -96,9 +101,181 @@ export default function BroadcastPage() {
 
         {view === 'compose' && <Composer key={audience} audience={audience} onCreated={openCampaign} />}
         {view === 'history' && <HistoryView audience={audience} onOpen={openCampaign} />}
-        {view === 'run' && campaignId && <Runner id={campaignId} onBack={() => setView('history')} />}
+        {view === 'run' && campaignId && <Runner id={campaignId} onBack={() => setView('history')} onOpenGateway={() => setGatewayOpen(true)} />}
       </div>
+
+      <GatewayModal open={gatewayOpen} onClose={() => setGatewayOpen(false)} />
     </div>
+  );
+}
+
+// ── ربط الواتساب (برنامج كمبيوتر المكتب) ─────────────────────────
+const GATEWAY_LABEL = {
+  connected:  ['متصل', 'green'],
+  qr:         ['بانتظار مسح الكود', 'amber'],
+  connecting: ['عم يتصل…', 'amber'],
+  logged_out: ['بانتظار مسح الكود', 'amber'],
+  offline:    ['غير مربوط', 'gray'],
+};
+
+function useGateway(fast = false) {
+  return useQuery({
+    queryKey: ['wa-gateway'],
+    queryFn: () => broadcastApi.gateway().then(r => r.data.data),
+    refetchInterval: fast ? 3_000 : 15_000,
+  });
+}
+
+function GatewayButton({ onClick }) {
+  const { data } = useGateway();
+  const [label, color] = GATEWAY_LABEL[data?.status || 'offline'];
+  const dot = { green: 'bg-green-500', amber: 'bg-amber-500 animate-pulse', gray: 'bg-gray-500' }[color];
+  return (
+    <Btn variant="outline" onClick={onClick}>
+      <span className={`w-2 h-2 rounded-full ${dot}`} />
+      ربط واتساب{data?.status === 'connected' && data.phone ? ` (${data.phone})` : ` — ${label}`}
+    </Btn>
+  );
+}
+
+function QrImage({ value }) {
+  const [src, setSrc] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    import('qrcode').then(({ default: QR }) =>
+      QR.toDataURL(value, { width: 260, margin: 1, color: { dark: '#19130F', light: '#FFFFFF' } }))
+      .then(url => alive && setSrc(url));
+    return () => { alive = false; };
+  }, [value]);
+  return src
+    ? <img src={src} alt="QR" className="w-[260px] h-[260px] rounded-xl bg-white p-2" />
+    : <div className="w-[260px] h-[260px] rounded-xl bg-gray-800 animate-pulse" />;
+}
+
+function GatewayModal({ open, onClose }) {
+  const qc = useQueryClient();
+  const { data: g, isLoading } = useGateway(open);
+  const [form, setForm] = useState(null);
+  useEffect(() => { if (open && g && !form) setForm(g.settings); }, [open, g, form]);
+  useEffect(() => { if (!open) setForm(null); }, [open]);
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ['wa-gateway'] });
+  const save = useMutation({
+    mutationFn: (data) => broadcastApi.gatewaySettings(data),
+    onSuccess: () => { toast.success('تم حفظ الإعدادات'); refresh(); },
+    onError: (e) => toast.error(e.response?.data?.message || 'تعذّر الحفظ'),
+  });
+  const logout = useMutation({
+    mutationFn: () => broadcastApi.gatewayLogout(),
+    onSuccess: () => toast.success('رح ينفصل الرقم خلال ثواني ويطلع كود جديد'),
+  });
+  const regen = useMutation({
+    mutationFn: () => broadcastApi.gatewayToken(),
+    onSuccess: () => { toast.success('تم تجديد المفتاح — نزّل البرنامج من جديد'); refresh(); },
+  });
+  const download = useMutation({
+    mutationFn: () => broadcastApi.gatewayDownload(),
+    onSuccess: (r) => {
+      const url = URL.createObjectURL(r.data);
+      const a = Object.assign(document.createElement('a'), { href: url, download: 'makana-whatsapp.zip' });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5_000);
+    },
+    onError: () => toast.error('تعذّر تنزيل البرنامج'),
+  });
+
+  const status = g?.status || 'offline';
+  const [label, color] = GATEWAY_LABEL[status];
+
+  return (
+    <Modal open={open} onClose={onClose} title="ربط واتساب للإرسال التلقائي" width="max-w-2xl">
+      {isLoading || !g ? <Loading /> : (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-800 border border-gray-700">
+            <div className="flex items-center gap-2 text-sm text-gray-200">
+              الحالة: <Badge label={label} color={color} />
+              {status === 'connected' && <span className="font-mono text-gray-300" dir="ltr">+{g.phone}</span>}
+            </div>
+            {g.last_seen && <span className="text-xs text-gray-500">آخر اتصال: {new Date(g.last_seen).toLocaleTimeString('en-GB')}</span>}
+          </div>
+
+          {/* غير مربوط: خطوات التشغيل */}
+          {status === 'offline' && (
+            <div className="space-y-3 text-sm text-gray-300">
+              <p>الإرسال التلقائي بيشتغل من خلال برنامج صغير على <b className="text-gray-100">كمبيوتر بالمكتب بيضل شغال</b>. خطوات أول مرة:</p>
+              <ol className="list-decimal pr-5 space-y-1.5 text-gray-300">
+                <li>ثبّت <a className="text-blue-400 hover:underline" href="https://nodejs.org" target="_blank" rel="noreferrer">Node.js</a> (نسخة LTS) على الكمبيوتر.</li>
+                <li>نزّل البرنامج من الزر تحت، وفك الضغط بمكان ثابت (مثلاً <span dir="ltr" className="font-mono">C:\makana-whatsapp</span>).</li>
+                <li>شغّل <span className="font-mono">start.bat</span> — أول مرة بياخد دقيقة.</li>
+                <li>ارجع لهون: رح يطلع كود QR تمسحه من الموبايل.</li>
+                <li>(مستحسن) شغّل <span className="font-mono">install-startup.bat</span> مرة وحدة ليشتغل البرنامج لحاله مع الكمبيوتر.</li>
+              </ol>
+              {g.can_manage ? (
+                <Btn loading={download.isPending} onClick={() => download.mutate()}>تنزيل البرنامج (makana-whatsapp.zip)</Btn>
+              ) : (
+                <p className="text-xs text-amber-300">تنزيل البرنامج وربطه بيحتاج صلاحية تعديل الإعدادات.</p>
+              )}
+              {g.last_seen && <p className="text-xs text-amber-300">⚠️ البرنامج كان شغال وانقطع — تأكد إن الكمبيوتر شغال والبرنامج مفتوح.</p>}
+            </div>
+          )}
+
+          {/* بانتظار المسح */}
+          {(status === 'qr' || status === 'connecting' || status === 'logged_out') && (
+            <div className="flex flex-col sm:flex-row items-center gap-5">
+              {g.qr ? <QrImage value={g.qr} /> : <div className="w-[260px] h-[260px] rounded-xl bg-gray-800 flex items-center justify-center text-sm text-gray-500">عم يجهّز الكود…</div>}
+              <ol className="list-decimal pr-5 space-y-2 text-sm text-gray-300">
+                <li>افتح واتساب على الموبايل اللي عليه <b className="text-gray-100">رقم الحملات</b>.</li>
+                <li>الإعدادات ← <b className="text-gray-100">الأجهزة المرتبطة</b> ← ربط جهاز.</li>
+                <li>امسح الكود. الكود بيتجدد لحاله كل كم ثانية.</li>
+              </ol>
+            </div>
+          )}
+
+          {/* متصل: إعدادات الإرسال */}
+          {status === 'connected' && form && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <StatCard label="انبعت اليوم" value={`${g.sent_today} / ${g.settings.daily_limit}`} color="green" icon={<Send size={16} className="text-green-400" />} />
+                <StatCard label="ساعات الإرسال" value={<span dir="ltr">{g.settings.work_start}–{g.settings.work_end}</span>} icon={<Timer size={16} className="text-blue-400" />} />
+                <StatCard label="الحالة" value={g.settings.paused ? 'موقوف' : 'شغال'} color={g.settings.paused ? 'red' : 'green'} icon={<CheckCircle2 size={16} />} />
+              </div>
+              {g.can_manage && (
+                <>
+                  <div className="grid grid-cols-3 gap-3">
+                    <Input label="الحد اليومي" type="number" min={1} value={form.daily_limit} onChange={e => setForm(f => ({ ...f, daily_limit: e.target.value }))} />
+                    <Input label="من الساعة" type="time" value={form.work_start} onChange={e => setForm(f => ({ ...f, work_start: e.target.value }))} />
+                    <Input label="لحد الساعة" type="time" value={form.work_end} onChange={e => setForm(f => ({ ...f, work_end: e.target.value }))} />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    بالبداية خلّي الحد اليومي 50 أو أقل، وزيده تدريجياً. الفاصل بين الرسائل بيتحدد لكل حملة.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Btn loading={save.isPending} onClick={() => save.mutate({ ...form, daily_limit: Number(form.daily_limit) })}>حفظ الإعدادات</Btn>
+                    <Btn variant="outline" onClick={() => save.mutate({ paused: !g.settings.paused })}>
+                      {g.settings.paused ? 'استئناف كل الإرسال' : 'إيقاف كل الإرسال مؤقتاً'}
+                    </Btn>
+                    <Btn variant="ghost" loading={logout.isPending}
+                      onClick={() => confirm('فصل الرقم عن النظام؟ الإرسال التلقائي بيوقف لحد ما تمسح كود جديد.') && logout.mutate()}>
+                      فصل الرقم
+                    </Btn>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {g.can_manage && status !== 'offline' && (
+            <div className="pt-3 border-t border-gray-800 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              <Btn size="sm" variant="ghost" loading={download.isPending} onClick={() => download.mutate()}>تنزيل البرنامج من جديد</Btn>
+              <Btn size="sm" variant="ghost" loading={regen.isPending}
+                onClick={() => confirm('تجديد مفتاح الربط؟ البرنامج الحالي بيوقف لحد ما تنزّل النسخة الجديدة.') && regen.mutate()}>
+                تجديد مفتاح الربط
+              </Btn>
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
   );
 }
 
@@ -376,7 +553,7 @@ function HistoryView({ audience, onOpen }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {campaigns.map(c => {
-        const done = c.sent_count + c.skipped_count;
+        const done = c.sent_count + c.skipped_count + (c.failed_count || 0);
         const finished = done >= c.recipients_count;
         return (
           <div key={c.id} className="bg-gray-800 border border-gray-700 rounded-xl p-4 space-y-3 hover:border-gray-600 transition-colors">
@@ -387,12 +564,13 @@ function HistoryView({ audience, onOpen }) {
                   {c.created_by?.full_name} · {new Date(c.created_at).toLocaleDateString('en-GB')}
                 </p>
               </div>
-              {finished ? <Badge label="مكتملة" color="green" /> : <Badge label="جارية" color="amber" />}
+              {c.auto_status === 'running' ? <Badge label="إرسال تلقائي" color="blue" />
+                : finished ? <Badge label="مكتملة" color="green" /> : <Badge label="جارية" color="amber" />}
             </div>
             <p className="text-xs text-gray-400 line-clamp-2 whitespace-pre-wrap">{c.message}</p>
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-gray-400">
-                <span>انبعتت {c.sent_count} · تخطّي {c.skipped_count}</span>
+                <span>انبعتت {c.sent_count} · تخطّي {c.skipped_count}{c.failed_count ? ` · فشل ${c.failed_count}` : ''}</span>
                 <span>{done}/{c.recipients_count}</span>
               </div>
               <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -415,11 +593,25 @@ function HistoryView({ audience, onOpen }) {
 }
 
 // ── تشغيل الحملة: فتح محادثة كل عميل بفاصل عشوائي ──────────────────
-function Runner({ id, onBack }) {
+function Runner({ id, onBack, onOpenGateway }) {
   const qc = useQueryClient();
   const { data: c, isLoading } = useQuery({
     queryKey: ['broadcast-campaign', id],
     queryFn: () => broadcastApi.campaign(id).then(r => r.data.data),
+    // وهي شغالة تلقائي منحدّث كل كم ثانية لنشوف التقدّم
+    refetchInterval: (q) => q.state.data?.auto_status === 'running' ? 5_000 : false,
+  });
+  const { data: gateway } = useGateway();
+  const auto = c?.auto_status === 'running';
+
+  const autoSend = useMutation({
+    mutationFn: (action) => broadcastApi.autoSend(id, action),
+    onSuccess: (r) => {
+      toast.success(r.data.message);
+      qc.setQueryData(['broadcast-campaign', id], r.data.data);
+      qc.invalidateQueries({ queryKey: ['broadcast-campaigns'] });
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'تعذّر تنفيذ الطلب'),
   });
 
   const [mode, setMode] = useState(() => store.get('broadcast-open-mode', isMobile() ? 'app' : 'web'));
@@ -449,7 +641,10 @@ function Runner({ id, onBack }) {
     sent:    recipients.filter(r => r.status === 'sent').length,
     skipped: recipients.filter(r => r.status === 'skipped').length,
     pending: recipients.filter(r => r.status === 'pending').length,
+    sending: recipients.filter(r => r.status === 'sending').length,
+    failed:  recipients.filter(r => r.status === 'failed').length,
   }), [recipients]);
+  const nextSendIn = c?.next_send_at ? Math.max(0, Math.ceil((new Date(c.next_send_at) - now) / 1000)) : 0;
 
   const startWait = () => {
     const min = c.min_delay, max = Math.max(c.min_delay, c.max_delay);
@@ -489,10 +684,40 @@ function Runner({ id, onBack }) {
         <StatCard label="تخطّي"    value={stats.skipped} color="purple" icon={<SkipForward size={18} className="text-purple-400" />} />
       </div>
 
-      <ProgressBar value={stats.sent + stats.skipped} max={stats.total || 1} />
+      <ProgressBar value={stats.sent + stats.skipped + stats.failed} max={stats.total || 1} />
+
+      {/* الإرسال التلقائي (برنامج كمبيوتر المكتب) */}
+      {(current || auto || stats.failed > 0) && (gateway?.status === 'connected' ? (
+        <div className={`rounded-2xl p-4 border flex flex-wrap items-center justify-between gap-3
+          ${auto ? 'bg-green-500/10 border-green-500/30' : 'bg-gray-800 border-gray-700'}`}>
+          <div className="text-sm space-y-1">
+            <p className="font-bold text-gray-100 flex items-center gap-2">
+              <Send size={16} className={auto ? 'text-green-400' : 'text-gray-400'} />
+              {auto ? 'الإرسال التلقائي شغال' : 'إرسال تلقائي'}
+              <span className="text-xs font-normal text-gray-400" dir="ltr">من +{gateway.phone}</span>
+            </p>
+            <p className="text-xs text-gray-400">
+              {auto
+                ? (gateway.settings.paused ? '⏸ كل الإرسال موقوف من إعدادات الربط'
+                  : gateway.sent_today >= gateway.settings.daily_limit ? `⏸ وصلنا الحد اليومي (${gateway.settings.daily_limit}) — بيكمل بكرا لحاله`
+                  : nextSendIn > 0 ? `الرسالة الجاية بعد ${nextSendIn} ث` : 'عم يبعت…')
+                : `بيبعت لحاله بفاصل ${c.min_delay}–${c.max_delay} ث، ضمن ${gateway.settings.work_start}–${gateway.settings.work_end}، وحد ${gateway.settings.daily_limit} باليوم.`}
+              {stats.failed > 0 && !auto && ` — ${stats.failed} فشلت ورح تنعاد.`}
+            </p>
+          </div>
+          {auto
+            ? <Btn variant="outline" loading={autoSend.isPending} onClick={() => autoSend.mutate('pause')}>إيقاف مؤقت</Btn>
+            : <Btn variant="success" loading={autoSend.isPending} onClick={() => autoSend.mutate('start')}><Send size={15} /> ابدأ الإرسال التلقائي</Btn>}
+        </div>
+      ) : (
+        <button onClick={onOpenGateway}
+          className="w-full text-right text-xs text-gray-400 p-3 rounded-xl border border-dashed border-gray-700 hover:border-gray-500 hover:text-gray-200 transition-colors">
+          💡 بدك ينبعت لحاله بدون ضغطات؟ اربط رقم واتساب من "ربط واتساب" وبيصير في زر إرسال تلقائي هون.
+        </button>
+      ))}
 
       {/* البطاقة الحالية */}
-      {current ? (
+      {auto ? null : current ? (
         <div className="bg-gray-800 border border-blue-500/30 rounded-2xl p-5 grid md:grid-cols-2 gap-5">
           <div className="space-y-2">
             <p className="text-xs text-gray-500">العميل التالي ({stats.sent + stats.skipped + 1} من {stats.total})</p>
@@ -520,13 +745,13 @@ function Runner({ id, onBack }) {
             </div>
           </div>
         </div>
-      ) : (
+      ) : stats.sending > 0 ? null : (
         <div className="flex items-center gap-3 p-5 rounded-2xl bg-green-500/10 border border-green-500/20 text-green-300">
-          <CheckCircle2 size={22} /> خلصت الحملة — انبعتت {stats.sent} رسالة{stats.skipped ? ` وتخطّي ${stats.skipped}` : ''}.
+          <CheckCircle2 size={22} /> خلصت الحملة — انبعتت {stats.sent} رسالة{stats.skipped ? ` وتخطّي ${stats.skipped}` : ''}{stats.failed ? ` وفشل ${stats.failed}` : ''}.
         </div>
       )}
 
-      {stats.sent >= DAILY_SAFE_LIMIT && stats.pending > 0 && (
+      {!auto && stats.sent >= DAILY_SAFE_LIMIT && stats.pending > 0 && (
         <div className="flex gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
           <AlertTriangle size={15} className="flex-shrink-0" />
           وصلت {stats.sent} رسالة — الأفضل تكمّل الباقي بكرا لحماية الرقم. الحملة محفوظة وبتقدر ترجعلها من "سجل الحملات".
@@ -543,11 +768,12 @@ function Runner({ id, onBack }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-gray-100 truncate">{r.name || '—'}</p>
                   <p className="text-xs font-mono text-gray-500" dir="ltr">{r.phone}</p>
+                  {r.status === 'failed' && r.error && <p className="text-xs text-red-400">{r.error}</p>}
                 </div>
                 <Badge label={label} color={color} />
                 <a href={chatUrl(mode, r.phone, fillMessage(c.message, r))} target="wa_broadcast" rel="noreferrer"
                   title="فتح المحادثة" className="p-1.5 text-gray-500 hover:text-green-400"><ExternalLink size={14} /></a>
-                {r.status !== 'pending' && (
+                {!auto && r.status !== 'pending' && r.status !== 'sending' && (
                   <button title="إرجاع للانتظار" className="p-1.5 text-gray-500 hover:text-gray-200"
                     onClick={() => setStatus.mutate({ rid: r.id, status: 'pending' })}><RotateCcw size={14} /></button>
                 )}
