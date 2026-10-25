@@ -295,3 +295,13 @@ export function CountBox({ label, count, active, onClick }) {
     </button>
   );
 }
+
+// عنوان قسم + شبكة بوكسات عدّادات
+export function BoxSection({ icon, title, cols = '', fixed, children }) {
+  return (
+    <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-3">
+      <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">{icon} {title}</p>
+      <div className={`grid grid-cols-2 ${fixed ? '' : 'sm:grid-cols-4'} ${cols} gap-3`}>{children}</div>
+    </div>
+  );
+}

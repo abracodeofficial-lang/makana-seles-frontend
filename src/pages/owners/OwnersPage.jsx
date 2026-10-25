@@ -6,7 +6,7 @@ import { ownersApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
-  Textarea, SearchBox, Avatar, Card, Loading, ErrorMsg, InfoRow, CountBox,
+  Textarea, SearchBox, Avatar, Card, Loading, ErrorMsg, InfoRow, CountBox, BoxSection,
 } from '../../components/ui';
 import { Plus, Pencil, Trash2, Building2, Users, Star, MessageCircle, X, Download, CheckCircle, ShieldCheck, Compass, Banknote } from 'lucide-react';
 
@@ -17,16 +17,6 @@ const DIRECTIONS = ['شمالية','جنوبية','شرقية','غربية','ش�
 
 const STATUS_COLOR = { تم: 'green', لا: 'gray', جاري: 'amber', ملغي: 'red' };
 const TYPE_COLOR   = { مالك: 'blue', وكيل: 'teal', وسيط: 'purple', مكتب: 'amber', مطور: 'green', مشروع: 'blue' };
-
-// عنوان قسم + شبكة بوكسات عدّادات
-function BoxSection({ icon, title, cols = '', fixed, children }) {
-  return (
-    <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-3">
-      <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">{icon} {title}</p>
-      <div className={`grid grid-cols-2 ${fixed ? '' : 'sm:grid-cols-4'} ${cols} gap-3`}>{children}</div>
-    </div>
-  );
-}
 
 export default function OwnersPage() {
   const qc = useQueryClient();
