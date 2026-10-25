@@ -282,3 +282,16 @@ export function InfoRow({ label, value, valueClass = '' }) {
     </div>
   );
 }
+
+// بوكس عدّاد قابل للضغط — بيفلتر القائمة على قيمته (وضغطة تانية بتلغي)
+export function CountBox({ label, count, active, onClick }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`text-right rounded-xl border px-3 py-2.5 transition-all
+        ${active ? 'bg-blue-500/15 border-blue-500/60' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}
+        ${count === 0 && !active ? 'opacity-50' : ''}`}>
+      <p className="text-xs text-gray-400 truncate">{label}</p>
+      <p className={`text-xl font-black ${active ? 'text-blue-300' : count ? 'text-gray-100' : 'text-gray-500'}`}>{count}</p>
+    </button>
+  );
+}

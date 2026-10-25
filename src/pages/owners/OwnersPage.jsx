@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { ownersApi, employeesApi, lookupApi } from '../../api/services';
+import { ownersApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
-  Textarea, SearchBox, Avatar, Card, Loading, ErrorMsg, InfoRow,
+  Textarea, SearchBox, Avatar, Card, Loading, ErrorMsg, InfoRow, CountBox,
 } from '../../components/ui';
-import { Plus, Pencil, Trash2, Building2, Users, Star, MessageCircle, X, Download, CheckCircle, ShieldCheck } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Users, Star, MessageCircle, X, Download, CheckCircle, ShieldCheck, Compass, Banknote } from 'lucide-react';
 
 const toDateInput = (d) => d ? String(d).slice(0, 10) : '';
 const waPhone = (p = '') => { const d = p.replace(/\D/g,''); return d.startsWith('966') ? d : d.startsWith('0') ? '966'+d.slice(1) : '966'+d; };
@@ -18,6 +18,16 @@ const DIRECTIONS = ['شمالية','جنوبية','شرقية','غربية','ش�
 const STATUS_COLOR = { تم: 'green', لا: 'gray', جاري: 'amber', ملغي: 'red' };
 const TYPE_COLOR   = { مالك: 'blue', وكيل: 'teal', وسيط: 'purple', مكتب: 'amber', مطور: 'green', مشروع: 'blue' };
 
+// عنوان قسم + شبكة بوكسات عدّادات
+function BoxSection({ icon, title, cols = '', fixed, children }) {
+  return (
+    <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-3">
+      <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">{icon} {title}</p>
+      <div className={`grid grid-cols-2 ${fixed ? '' : 'sm:grid-cols-4'} ${cols} gap-3`}>{children}</div>
+    </div>
+  );
+}
+
 export default function OwnersPage() {
   const qc = useQueryClient();
   const [search, setSearch]         = useState('');
@@ -26,44 +36,51 @@ export default function OwnersPage() {
   const [showDetail, setShowDetail] = useState(null);
   const [showProps, setShowProps]   = useState(null);
   const [editing, setEditing]       = useState(null);
-  const [showExport, setShowExport] = useState(false);
-  const [exportRange, setExportRange] = useState({ date_from: todayISO(), date_to: todayISO() });
+  const [exporting, setExporting]   = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['owners', search, filters],
     queryFn: () => ownersApi.list({ search, ...filters }).then(r => r.data),
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
-  const { data: employeesData } = useQuery({
-    queryKey: ['employees-all'],
-    queryFn: () => employeesApi.list({ per_page: 200, status: 'نشط' }).then(r => r.data),
+  // موظفو الأوبريشن فقط = المخصصين لأنواع العقارات من الإعدادات
+  const { data: assignments = [] } = useQuery({
+    queryKey: ['operation-assignments'],
+    queryFn: () => operationAssignmentsApi.list().then(r => r.data?.data || r.data || []),
+    staleTime: 300_000,
   });
-  const employees = employeesData?.data?.data || [];
+  const operationEmployees = useMemo(() => {
+    const map = new Map();
+    assignments.forEach(a => a.employee && map.set(a.employee.id, a.employee.full_name));
+    return [...map].map(([id, name]) => ({ value: String(id), label: name }));
+  }, [assignments]);
 
-  const { data: citiesData } = useQuery({
-    queryKey: ['lookup-cities'],
-    queryFn: () => lookupApi.cities().then(r => r.data),
-    staleTime: Infinity,
-  });
-  const cities = Array.isArray(citiesData) ? citiesData : (citiesData?.data || []);
-
-  const resetFilters = () => { setFilters({}); setSearch(''); };
-  const hasActiveFilters = search || Object.values(filters).some(v => v);
+  // أي تغيير بالفلاتر بيرجّع لأول صفحة
+  const setF = (k, v) => setFilters(f => ({ ...f, [k]: v || undefined, page: undefined }));
+  const toggleF = (k, v) => setFilters(f => ({ ...f, [k]: String(f[k]) === String(v) ? undefined : v, page: undefined }));
+  const hasDate    = !!(filters.date_from || filters.date_to);
+  const FILTER_KEYS = ['sales_employee_owners_id', 'exclusive_status', 'property_type_id', 'direction', 'price_range', 'type'];
+  const hasFilters = FILTER_KEYS.some(k => filters[k]);
+  const clearFilters = () => setFilters(f => ({ date_from: f.date_from, date_to: f.date_to }));
 
   const deleteMut = useMutation({
     mutationFn: ownersApi.delete,
     onSuccess: () => { toast.success('تم حذف المالك'); qc.invalidateQueries(['owners']); },
   });
 
-  const stats           = data?.stats            || {};
-  const byOwnerType      = data?.by_owner_type     || [];
-  const byPropertyType   = data?.by_property_type  || [];
-  const byDirection       = data?.by_direction      || [];
+  const stats          = data?.stats            || {};
+  const byOwnerType    = data?.by_owner_type    || [];
+  const byPropertyType = data?.by_property_type || [];
+  const byDirection    = data?.by_direction     || [];
+  const byPrice        = data?.by_price         || [];
 
+  // التصدير بياخد نفس الفترة والفلاتر المطبّقة على الصفحة
   const handleExport = async () => {
+    setExporting(true);
     try {
-      const res     = await ownersApi.export(exportRange);
+      const res     = await ownersApi.export({ search, ...filters });
       const records = res.data?.data || [];
 
       if (!records.length) {
@@ -87,14 +104,14 @@ export default function OwnersPage() {
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'الملاك');
-      XLSX.writeFile(wb, `owners-${exportRange.date_from}-${exportRange.date_to}.xlsx`);
-
-      setShowExport(false);
-      toast.success('تم تصدير التقرير');
+      const period = hasDate ? `${filters.date_from || 'start'}-${filters.date_to || todayISO()}` : 'all';
+      XLSX.writeFile(wb, `owners-${period}.xlsx`);
+      toast.success(`تم تصدير ${records.length} مالك`);
     } catch { toast.error('فشل التصدير'); }
+    finally { setExporting(false); }
   };
 
-  if (isLoading) return <Loading />;
+  if (isLoading && !data) return <Loading />;
   if (error)     return <ErrorMsg />;
 
   return (
@@ -104,10 +121,7 @@ export default function OwnersPage() {
         subtitle="عرض وإدارة جميع الملاك والوكلاء"
         actions={
           <>
-            <SearchBox value={search} onChange={setSearch} placeholder="بحث بالاسم أو الكود..." />
-            <Btn variant="outline" onClick={() => setShowExport(true)}>
-              <Download size={14}/> تصدير
-            </Btn>
+            <SearchBox value={search} onChange={v => { setSearch(v); setFilters(f => ({ ...f, page: undefined })); }} placeholder="بحث بالاسم أو الكود..." />
             <Btn onClick={() => { setEditing(null); setShowForm(true); }}>
               <Plus size={16} /> إضافة مالك جديد
             </Btn>
@@ -115,187 +129,93 @@ export default function OwnersPage() {
         }
       />
 
-      <div className="p-6 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-4">
-          <StatCard label="إجمالي الملاك"       value={stats.total}               icon={<Users size={18}/>}      color="blue" />
-          <StatCard label="ملاك أفراد"          value={stats.individuals}         icon={<Users size={18}/>}      color="green" />
-          <StatCard label="مطورون"               value={stats.developers}          icon={<Building2 size={18}/>}  color="purple" />
-          <StatCard label="مكاتب"                value={stats.offices}             icon={<Building2 size={18}/>}  color="amber" />
-          <StatCard label="مشاريع"               value={stats.projects}            icon={<Star size={18}/>}       color="teal" />
-          <StatCard label="عقارات مضافة"        value={stats.properties_added}    icon={<Building2 size={18}/>}  color="blue" />
-          <StatCard label="عقارات مقبولة"       value={stats.properties_accepted} icon={<CheckCircle size={18}/>} color="green" />
-          <StatCard label="عقارات موثّقة رسمياً" value={stats.properties_verified} icon={<ShieldCheck size={18}/>} color="purple" />
-        </div>
-
-        {/* توزيع الملاك والعقارات */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">حسب نوع المالك</p>
-            {byOwnerType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-              <div className="flex flex-wrap gap-2">
-                {byOwnerType.map(t => <Badge key={t.label} label={`${t.label} (${t.count})`} color={TYPE_COLOR[t.label] || 'gray'} />)}
-              </div>
+      <div className="p-4 sm:p-6 space-y-6">
+        {/* ① الفترة + التصدير */}
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-full sm:w-44">
+              <Input label="من تاريخ" type="date" value={filters.date_from || ''} onChange={e => setF('date_from', e.target.value)} />
+            </div>
+            <div className="w-full sm:w-44">
+              <Input label="إلى تاريخ" type="date" value={filters.date_to || ''} onChange={e => setF('date_to', e.target.value)} />
+            </div>
+            <Btn variant="outline" loading={exporting} onClick={handleExport} className="h-[42px]">
+              <Download size={14}/> تصدير إكسل
+            </Btn>
+            {hasDate && (
+              <Btn variant="ghost" onClick={() => setFilters(f => ({ ...f, date_from: undefined, date_to: undefined, page: undefined }))} className="h-[42px]">
+                <X size={13}/> كل الفترات
+              </Btn>
             )}
-          </div>
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">عقاراتهم حسب النوع</p>
-            {byPropertyType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-              <div className="flex flex-wrap gap-2">
-                {byPropertyType.map(t => <Badge key={t.label} label={`${t.label} (${t.count})`} color="blue" />)}
-              </div>
-            )}
-          </div>
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">عقاراتهم حسب الاتجاه</p>
-            {byDirection.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-              <div className="flex flex-wrap gap-2">
-                {byDirection.map(d => <Badge key={d.label} label={`${d.label} (${d.count})`} color="teal" />)}
-              </div>
-            )}
+            <p className="text-xs text-gray-500 sm:mr-auto pb-2.5">
+              {hasDate ? 'الأرقام والقائمة والتصدير حسب الملاك المضافين بالفترة المحددة' : 'بدون فترة = كل الملاك'}
+            </p>
           </div>
         </div>
 
-        {/* Filters */}
+        {/* ② العدادات */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <StatCard label="العقارات المضافة"        value={stats.properties_added}    icon={<Building2 size={18}/>}   color="blue" />
+            <StatCard label="العقارات المقبولة"       value={stats.properties_accepted} icon={<CheckCircle size={18}/>} color="green" />
+            <StatCard label="العقارات المضافة رسمياً" value={stats.properties_verified} icon={<ShieldCheck size={18}/>} color="purple" />
+          </div>
+
+          <BoxSection icon={<Building2 size={13}/>} title="أنواع العقارات" cols="lg:grid-cols-6">
+            {byPropertyType.map(t => (
+              <CountBox key={t.id} label={t.label} count={t.count}
+                active={String(filters.property_type_id) === String(t.id)}
+                onClick={() => toggleF('property_type_id', t.id)} />
+            ))}
+          </BoxSection>
+
+          <BoxSection icon={<Compass size={13}/>} title="اتجاهات العقارات" cols="2xl:grid-cols-8">
+            {byDirection.map(d => (
+              <CountBox key={d.label} label={d.label} count={d.count}
+                active={filters.direction === d.label}
+                onClick={() => toggleF('direction', d.label)} />
+            ))}
+          </BoxSection>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <BoxSection icon={<Banknote size={13}/>} title="أسعار العقارات" cols="sm:grid-cols-3" fixed>
+              {byPrice.map(p => (
+                <CountBox key={p.value} label={p.label} count={p.count}
+                  active={filters.price_range === p.value}
+                  onClick={() => toggleF('price_range', p.value)} />
+              ))}
+            </BoxSection>
+            <BoxSection icon={<Users size={13}/>} title={`نوع المالك (${stats.total ?? 0})`} cols="sm:grid-cols-3" fixed>
+              {byOwnerType.map(t => (
+                <CountBox key={t.label} label={t.label} count={t.count}
+                  active={filters.type === t.label}
+                  onClick={() => toggleF('type', t.label)} />
+              ))}
+            </BoxSection>
+          </div>
+        </div>
+
+        {/* ③ الفلاتر */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">الفلاتر</p>
-            {hasActiveFilters && (
-              <Btn size="sm" variant="outline" onClick={resetFilters}>
+            {hasFilters && (
+              <Btn size="sm" variant="outline" onClick={clearFilters}>
                 <X size={13}/> إلغاء الفلترة
               </Btn>
             )}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">اسم المالك</label>
-              <Input
-                placeholder="ابحث بالاسم..."
-                value={filters.name || ''}
-                onChange={e => setFilters(f => ({ ...f, name: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">المجموعة</label>
-              <Select
-                options={['A','B','C'].map(v => ({ value: v, label: `المجموعة ${v}` }))}
-                value={filters.group || ''}
-                onChange={e => setFilters(f => ({ ...f, group: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">الحالة (حصري)</label>
-              <Select
-                options={['تم','لا','جاري','ملغي'].map(v => ({ value: v, label: v }))}
-                value={filters.exclusive_status || ''}
-                onChange={e => setFilters(f => ({ ...f, exclusive_status: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">الصفة</label>
-              <Select
-                options={['مالك','وكيل','وسيط','مكتب','مطور','مشروع'].map(v => ({ value: v, label: v }))}
-                value={filters.type || ''}
-                onChange={e => setFilters(f => ({ ...f, type: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ الإضافة</label>
-              <Input
-                type="date"
-                value={filters.date_from || ''}
-                onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ الإضافة</label>
-              <Input
-                type="date"
-                value={filters.date_to || ''}
-                onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ تحديث السعر</label>
-              <Input
-                type="date"
-                value={filters.price_update_from || ''}
-                onChange={e => setFilters(f => ({ ...f, price_update_from: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ تحديث السعر</label>
-              <Input
-                type="date"
-                value={filters.price_update_to || ''}
-                onChange={e => setFilters(f => ({ ...f, price_update_to: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">موظف الأوبريشن</label>
-              <Select
-                options={employees.map(e => ({ value: String(e.id), label: e.full_name }))}
-                value={filters.sales_employee_owners_id || ''}
-                onChange={e => setFilters(f => ({ ...f, sales_employee_owners_id: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">نوع العقار</label>
-              <Select
-                options={[
-                  { value: '1', label: 'شقة' }, { value: '2', label: 'فلة' },
-                  { value: '3', label: 'عمارة' }, { value: '4', label: 'أرض' },
-                ]}
-                value={filters.property_type_id || ''}
-                onChange={e => setFilters(f => ({ ...f, property_type_id: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">المدينة</label>
-              <Select
-                options={cities.map(c => ({ value: String(c.id), label: c.name }))}
-                value={filters.city_id || ''}
-                onChange={e => setFilters(f => ({ ...f, city_id: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">الاتجاه</label>
-              <Select
-                options={DIRECTIONS.map(v => ({ value: v, label: v }))}
-                value={filters.direction || ''}
-                onChange={e => setFilters(f => ({ ...f, direction: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">سعر العقار من</label>
-              <Input
-                type="number"
-                value={filters.price_min || ''}
-                onChange={e => setFilters(f => ({ ...f, price_min: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">سعر العقار إلى</label>
-              <Input
-                type="number"
-                value={filters.price_max || ''}
-                onChange={e => setFilters(f => ({ ...f, price_max: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <Select label="موظف الأوبريشن" value={filters.sales_employee_owners_id || ''}
+              onChange={e => setF('sales_employee_owners_id', e.target.value)} options={operationEmployees} />
+            <Select label="الحالة (حصري)" value={filters.exclusive_status || ''} onChange={e => setF('exclusive_status', e.target.value)}
+              options={['تم', 'لا', 'جاري', 'ملغي'].map(v => ({ value: v, label: v }))} />
+            <Select label="نوع العقار" value={filters.property_type_id || ''} onChange={e => setF('property_type_id', e.target.value)}
+              options={byPropertyType.map(t => ({ value: String(t.id), label: t.label }))} />
+            <Select label="الاتجاه" value={filters.direction || ''} onChange={e => setF('direction', e.target.value)}
+              options={DIRECTIONS.map(v => ({ value: v, label: v }))} />
+            <Select label="سعر العقار" value={filters.price_range || ''} onChange={e => setF('price_range', e.target.value)}
+              options={byPrice.map(p => ({ value: p.value, label: p.label }))} />
           </div>
         </div>
 
@@ -338,29 +258,31 @@ export default function OwnersPage() {
               </Tr>
             ))}
           </Table>
+          {data?.data?.data?.length === 0 && (
+            <p className="text-center text-sm text-gray-500 py-10">لا يوجد ملاك مطابقين</p>
+          )}
         </Card>
+
+        {/* الصفحات */}
+        {(data?.data?.last_page || 1) > 1 && (
+          <div className="flex items-center justify-center gap-3 text-sm">
+            <Btn size="sm" variant="outline" disabled={(data.data.current_page || 1) <= 1}
+              onClick={() => setFilters(f => ({ ...f, page: (data.data.current_page || 1) - 1 }))}>
+              السابق
+            </Btn>
+            <span className="text-gray-400">صفحة {data.data.current_page} من {data.data.last_page} · {data.data.total} مالك</span>
+            <Btn size="sm" variant="outline" disabled={data.data.current_page >= data.data.last_page}
+              onClick={() => setFilters(f => ({ ...f, page: data.data.current_page + 1 }))}>
+              التالي
+            </Btn>
+          </div>
+        )}
       </div>
 
       <OwnerForm open={showForm} onClose={() => setShowForm(false)} editing={editing} />
       {showDetail && <OwnerDetail id={showDetail} onClose={() => setShowDetail(null)} />}
       {showProps  && <OwnerProperties id={showProps} onClose={() => setShowProps(null)} />}
 
-      {showExport && (
-        <Modal open onClose={() => setShowExport(false)} title="تصدير تقرير الملاك"
-          footer={
-            <>
-              <Btn onClick={handleExport}><Download size={14}/> تصدير</Btn>
-              <Btn variant="outline" onClick={() => setShowExport(false)}>إلغاء</Btn>
-            </>
-          }>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="من تاريخ" type="date" value={exportRange.date_from}
-              onChange={e => setExportRange(r => ({ ...r, date_from: e.target.value }))} />
-            <Input label="إلى تاريخ" type="date" value={exportRange.date_to}
-              onChange={e => setExportRange(r => ({ ...r, date_to: e.target.value }))} />
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

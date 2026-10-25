@@ -7,7 +7,7 @@ import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Card, Modal, Input, Select,
   Textarea, Loading, ErrorMsg, InfoRow, Avatar,
-  Table, Tr, Td,
+  Table, Tr, Td, CountBox,
 } from '../../components/ui';
 import { RichText } from '../../components/ui/RichText';
 // المحرر (TipTap) تقيل — بينحمّل بس لما ينفتح فورم العقار
@@ -65,19 +65,6 @@ const PRICE_RANGES = [
   { value: 'gt10',  label: 'أعلى من 10M' },
 ];
 const PROPERTY_STATUSES = ['متاح', 'محجوز', 'مباع', 'قيد المراجعة'];
-
-// بوكس عدّاد قابل للضغط — بيفلتر القائمة على قيمته (وضغطة تانية بتلغي)
-function CountBox({ label, count, active, onClick }) {
-  return (
-    <button type="button" onClick={onClick}
-      className={`text-right rounded-xl border px-3 py-2.5 transition-all
-        ${active ? 'bg-blue-500/15 border-blue-500/60' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}
-        ${count === 0 && !active ? 'opacity-50' : ''}`}>
-      <p className="text-xs text-gray-400 truncate">{label}</p>
-      <p className={`text-xl font-black ${active ? 'text-blue-300' : count ? 'text-gray-100' : 'text-gray-500'}`}>{count}</p>
-    </button>
-  );
-}
 
 export default function PropertiesPage() {
   const qc = useQueryClient();
