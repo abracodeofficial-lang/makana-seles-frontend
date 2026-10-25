@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { propertiesApi, ownersApi, lookupApi } from '../../api/services';
@@ -58,115 +58,67 @@ function MediaBar({ photo, design, video, marketing }) {
   );
 }
 
-// ── قائمة منسدلة مع بحث (البحث من السيرفر) ──────────────────────
-function RemoteCombobox({ label, placeholder, allLabel, queryKey, fetcher, getName, getSub, onChange }) {
-  const [open, setOpen]   = useState(false);
-  const [query, setQuery] = useState('');
+// فئات السعر (نفس تقسيم المهتمين)
+const PRICE_RANGES = [
+  { value: 'lt4',   label: 'أقل من 4M' },
+  { value: '4to10', label: 'بين 4M-10M' },
+  { value: 'gt10',  label: 'أعلى من 10M' },
+];
+const PROPERTY_STATUSES = ['متاح', 'محجوز', 'مباع', 'قيد المراجعة'];
 
-  const { data: items = [] } = useQuery({
-    queryKey: [queryKey, query],
-    queryFn:  () => fetcher(query),
-    enabled:  open,
-    staleTime: 30_000,
-  });
-
-  const pick = (item) => {
-    onChange(item ? { id: String(item.id), name: getName(item) } : { id: '', name: '' });
-    setQuery('');
-    setOpen(false);
-  };
-
+// بوكس عدّاد قابل للضغط — بيفلتر القائمة على قيمته (وضغطة تانية بتلغي)
+function CountBox({ label, count, active, onClick }) {
   return (
-    <div className="relative">
-      <input
-        value={open ? query : label}
-        placeholder={placeholder}
-        onFocus={() => { setQuery(''); setOpen(true); }}
-        onChange={e => { setQuery(e.target.value); setOpen(true); }}
-        onBlur={() => setOpen(false)}
-        className={`w-full bg-gray-800 border border-gray-700 rounded-lg ${label ? 'pl-14' : 'pl-8'} pr-3 py-2.5 h-[42px] text-sm text-gray-100 outline-none focus:border-blue-500 transition-colors`}
-      />
-      <ChevronDown size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-      {label && !open && (
-        <button type="button" title="إلغاء هذا الفلتر"
-          onMouseDown={e => { e.preventDefault(); e.stopPropagation(); pick(null); }}
-          className="absolute left-7 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-400 transition-colors">
-          <X size={13} />
-        </button>
-      )}
-      {open && (
-        <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg shadow-xl">
-          <div onMouseDown={() => pick(null)}
-            className="px-3 py-2 text-xs text-gray-400 hover:bg-gray-700 cursor-pointer border-b border-gray-700">
-            {allLabel}
-          </div>
-          {items.length === 0 ? (
-            <div className="px-3 py-2 text-xs text-gray-500">لا نتائج</div>
-          ) : items.map(item => (
-            <div key={item.id} onMouseDown={() => pick(item)}
-              className="px-3 py-2 text-xs text-gray-200 cursor-pointer hover:bg-gray-700">
-              {getName(item)}
-              <span className="text-gray-500 font-mono mr-2">{getSub(item)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <button type="button" onClick={onClick}
+      className={`text-right rounded-xl border px-3 py-2.5 transition-all
+        ${active ? 'bg-blue-500/15 border-blue-500/60' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}
+        ${count === 0 && !active ? 'opacity-50' : ''}`}>
+      <p className="text-xs text-gray-400 truncate">{label}</p>
+      <p className={`text-xl font-black ${active ? 'text-blue-300' : count ? 'text-gray-100' : 'text-gray-500'}`}>{count}</p>
+    </button>
   );
 }
 
 export default function PropertiesPage() {
   const qc = useQueryClient();
   const [filters, setFilters]       = useState({});
-  const [ownerLabel, setOwnerLabel] = useState('');
-  const [propertyLabel, setPropertyLabel] = useState('');
   const [showForm, setShowForm]     = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   const [editing, setEditing]       = useState(null);
+  const [exporting, setExporting]   = useState(false);
 
   // حفظ مسودة الإضافة بين فتحات الـ popup
   const [draftForm, setDraftForm]   = useState(null);
   const [draftOwner, setDraftOwner] = useState(null);
 
-  const [showExport, setShowExport] = useState(false);
-  const [exportRange, setExportRange] = useState({ date_from: todayISO(), date_to: todayISO() });
-
   const { data, isLoading, error } = useQuery({
     queryKey: ['properties', filters],
     queryFn: () => propertiesApi.list({ ...filters }).then(r => r.data),
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
-  const { data: citiesData } = useQuery({
-    queryKey: ['lookup-cities'],
-    queryFn: () => lookupApi.cities().then(r => r.data),
-    staleTime: Infinity,
-  });
-  const cities = Array.isArray(citiesData) ? citiesData : (citiesData?.data || []);
-
-  const { data: neighborhoodsData } = useQuery({
-    queryKey: ['lookup-neighborhoods', filters.city_id],
-    queryFn: () => lookupApi.neighborhoods(filters.city_id).then(r => r.data),
-    enabled: !!filters.city_id,
-    staleTime: Infinity,
-  });
-  const neighborhoods = Array.isArray(neighborhoodsData) ? neighborhoodsData : (neighborhoodsData?.data || []);
-
-  const resetFilters = () => { setFilters({}); setOwnerLabel(''); setPropertyLabel(''); };
-  const hasActiveFilters = Object.values(filters).some(v => v);
+  // أي تغيير بالفلاتر بيرجّع لأول صفحة
+  const setF = (k, v) => setFilters(f => ({ ...f, [k]: v || undefined, page: undefined }));
+  const toggleF = (k, v) => setFilters(f => ({ ...f, [k]: String(f[k]) === String(v) ? undefined : v, page: undefined }));
+  const hasDate    = !!(filters.date_from || filters.date_to);
+  const hasFilters = ['status', 'property_type_id', 'direction', 'price_range', 'code'].some(k => filters[k]);
+  const clearFilters = () => setFilters(f => ({ date_from: f.date_from, date_to: f.date_to }));
 
   const deleteMut = useMutation({
     mutationFn: propertiesApi.delete,
     onSuccess: () => { toast.success('تم حذف العقار'); qc.invalidateQueries(['properties']); },
   });
 
-  const stats       = data?.stats       || {};
+  const stats       = data?.stats        || {};
   const byType      = data?.by_type      || [];
   const byDirection = data?.by_direction || [];
 
+  // التصدير بياخد نفس الفترة والفلاتر المطبّقة على الصفحة
   const handleExport = async () => {
+    setExporting(true);
     try {
-      const res     = await propertiesApi.export(exportRange);
+      const res     = await propertiesApi.export(filters);
       const records = res.data?.data || [];
 
       if (!records.length) {
@@ -197,11 +149,11 @@ export default function PropertiesPage() {
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'العقارات');
-      XLSX.writeFile(wb, `properties-${exportRange.date_from}-${exportRange.date_to}.xlsx`);
-
-      setShowExport(false);
-      toast.success('تم تصدير التقرير');
+      const period = hasDate ? `${filters.date_from || 'start'}-${filters.date_to || todayISO()}` : 'all';
+      XLSX.writeFile(wb, `properties-${period}.xlsx`);
+      toast.success(`تم تصدير ${records.length} عقار`);
     } catch { toast.error('فشل التصدير'); }
+    finally { setExporting(false); }
   };
 
   if (error)     return <ErrorMsg />;
@@ -212,203 +164,94 @@ export default function PropertiesPage() {
         title="إدارة العقارات"
         subtitle="عرض وإدارة جميع العقارات المسجلة"
         actions={
-          <>
-            <Btn variant="outline" onClick={() => setShowExport(true)}>
-              <Download size={14}/> تصدير
-            </Btn>
-            <Btn onClick={() => { setEditing(null); setShowForm(true); }}>
-              <Plus size={16}/> إضافة عقار جديد
-            </Btn>
-          </>
+          <Btn onClick={() => { setEditing(null); setShowForm(true); }}>
+            <Plus size={16}/> إضافة عقار جديد
+          </Btn>
         }
       />
 
-      <div className="p-6 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-5 gap-4">
-          <StatCard label="إجمالي العقارات"    value={stats.total}     icon={<Building2 size={18}/>}   color="blue" />
-          <StatCard label="متاح"                value={stats.available} icon={<CheckCircle size={18}/>} color="green" />
-          <StatCard label="محجوز"               value={stats.reserved}  icon={<Clock size={18}/>}       color="amber" />
-          <StatCard label="مباع"                value={stats.sold}      icon={<XCircle size={18}/>}     color="red" />
-          <StatCard label="جاري تسويقها"        value={stats.marketing} icon={<TrendingUp size={18}/>}  color="purple" />
-        </div>
-
-        {/* توزيع حسب النوع والاتجاه */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-              <Building2 size={12}/> حسب نوع العقار
-            </p>
-            {byType.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-              <div className="flex flex-wrap gap-2">
-                {byType.map(t => (
-                  <Badge key={t.label} label={`${t.label} (${t.count})`} color="blue" />
-                ))}
-              </div>
+      <div className="p-4 sm:p-6 space-y-6">
+        {/* ① الفترة + التصدير */}
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-full sm:w-44">
+              <Input label="من تاريخ" type="date" value={filters.date_from || ''} onChange={e => setF('date_from', e.target.value)} />
+            </div>
+            <div className="w-full sm:w-44">
+              <Input label="إلى تاريخ" type="date" value={filters.date_to || ''} onChange={e => setF('date_to', e.target.value)} />
+            </div>
+            <Btn variant="outline" loading={exporting} onClick={handleExport} className="h-[42px]">
+              <Download size={14}/> تصدير إكسل
+            </Btn>
+            {hasDate && (
+              <Btn variant="ghost" onClick={() => setFilters(f => ({ ...f, date_from: undefined, date_to: undefined, page: undefined }))} className="h-[42px]">
+                <X size={13}/> كل الفترات
+              </Btn>
             )}
-          </div>
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-              <Compass size={12}/> حسب الاتجاه
+            <p className="text-xs text-gray-500 sm:mr-auto pb-2.5">
+              {hasDate ? 'الأرقام والقائمة والتصدير حسب الفترة المحددة' : 'بدون فترة = كل العقارات'}
             </p>
-            {byDirection.length === 0 ? <p className="text-xs text-gray-600">لا توجد بيانات</p> : (
-              <div className="flex flex-wrap gap-2">
-                {byDirection.map(d => (
-                  <Badge key={d.label} label={`${d.label} (${d.count})`} color="teal" />
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Filters */}
+        {/* ② العدادات */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <StatCard label="العقارات الجاري تسويقها" value={stats.marketing} icon={<TrendingUp size={18}/>} color="purple" />
+            <StatCard label="إجمالي العقارات"          value={stats.total}     icon={<Building2 size={18}/>}  color="blue" />
+            <StatCard label="المتاحة"                  value={stats.available} icon={<CheckCircle size={18}/>} color="green" />
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5"><Building2 size={13}/> أنواع العقارات</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+              {byType.map(t => (
+                <CountBox key={t.id} label={t.label} count={t.count}
+                  active={String(filters.property_type_id) === String(t.id)}
+                  onClick={() => toggleF('property_type_id', t.id)} />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5"><Compass size={13}/> اتجاهات العقارات</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-3">
+              {byDirection.map(d => (
+                <CountBox key={d.label} label={d.label} count={d.count}
+                  active={filters.direction === d.label}
+                  onClick={() => toggleF('direction', d.label)} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ③ الفلاتر */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">الفلاتر</p>
-            {hasActiveFilters && (
-              <Btn size="sm" variant="outline" onClick={resetFilters}>
+            {hasFilters && (
+              <Btn size="sm" variant="outline" onClick={clearFilters}>
                 <X size={13}/> إلغاء الفلترة
               </Btn>
             )}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">اسم العقار</label>
-              <RemoteCombobox
-                label={propertyLabel}
-                placeholder="كل العقارات"
-                allLabel="كل العقارات"
-                queryKey="properties-combo"
-                fetcher={(q) => propertiesApi.list({ search: q }).then(r => r.data?.data?.data || [])}
-                getName={p => p.name}
-                getSub={p => p.property_code}
-                onChange={({ id, name }) => { setFilters(f => ({ ...f, property_id: id })); setPropertyLabel(name); }}
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">المالك</label>
-              <RemoteCombobox
-                label={ownerLabel}
-                placeholder="كل الملاك"
-                allLabel="كل الملاك"
-                queryKey="owners-combo"
-                fetcher={(q) => ownersApi.list({ search: q }).then(r => r.data?.data?.data || [])}
-                getName={o => o.name}
-                getSub={o => o.owner_code}
-                onChange={({ id, name }) => { setFilters(f => ({ ...f, owner_id: id })); setOwnerLabel(name); }}
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">من تاريخ</label>
-              <Input
-                type="date"
-                value={filters.date_from || ''}
-                onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">إلى تاريخ</label>
-              <Input
-                type="date"
-                value={filters.date_to || ''}
-                onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">الحالة</label>
-              <Select
-                options={['متاح','محجوز','مباع','قيد المراجعة'].map(v => ({ value: v, label: v }))}
-                value={filters.status || ''}
-                onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">نوع العقار</label>
-              <Select
-                options={[
-                  { value: '1', label: 'شقة' }, { value: '2', label: 'فلة' },
-                  { value: '3', label: 'عمارة' }, { value: '4', label: 'أرض' },
-                ]}
-                value={filters.property_type_id || ''}
-                onChange={e => setFilters(f => ({ ...f, property_type_id: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div className="col-span-2 grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] text-gray-500 mb-1">المدينة</label>
-                <Select
-                  options={cities.map(c => ({ value: String(c.id), label: c.name }))}
-                  value={filters.city_id || ''}
-                  onChange={e => setFilters(f => ({ ...f, city_id: e.target.value, neighborhood_id: '' }))}
-                  className="text-xs py-1.5 w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] text-gray-500 mb-1">الحي</label>
-                <Select
-                  options={neighborhoods.map(n => ({ value: String(n.id), label: n.name }))}
-                  value={filters.neighborhood_id || ''}
-                  onChange={e => setFilters(f => ({ ...f, neighborhood_id: e.target.value }))}
-                  disabled={!filters.city_id}
-                  className="text-xs py-1.5 w-full"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">السعر من</label>
-              <Input
-                type="number"
-                value={filters.price_min || ''}
-                onChange={e => setFilters(f => ({ ...f, price_min: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">السعر إلى</label>
-              <Input
-                type="number"
-                value={filters.price_max || ''}
-                onChange={e => setFilters(f => ({ ...f, price_max: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">بحث بالكود</label>
-              <Input
-                placeholder="مثال: PR-2026-001"
-                value={filters.code || ''}
-                onChange={e => setFilters(f => ({ ...f, code: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">رقم الترخيص / المخطط / القطعة</label>
-              <Input
-                placeholder="ابحث بأي رقم منهم"
-                value={filters.search || ''}
-                onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-gray-500 mb-1">عقد الوساطة</label>
-              <Select
-                options={[{ value: '1', label: 'تم عقد وساطة' }, { value: '0', label: 'بدون عقد وساطة' }]}
-                value={filters.has_brokerage_contract ?? ''}
-                onChange={e => setFilters(f => ({ ...f, has_brokerage_contract: e.target.value || undefined }))}
-                className="text-xs py-1.5 w-full"
-              />
-            </div>
+            <Select label="الحالة" value={filters.status || ''} onChange={e => setF('status', e.target.value)}
+              options={PROPERTY_STATUSES.map(v => ({ value: v, label: v }))} />
+            <Select label="نوع العقار" value={filters.property_type_id || ''} onChange={e => setF('property_type_id', e.target.value)}
+              options={byType.map(t => ({ value: String(t.id), label: t.label }))} />
+            <Select label="الاتجاه" value={filters.direction || ''} onChange={e => setF('direction', e.target.value)}
+              options={byDirection.map(d => ({ value: d.label, label: d.label }))} />
+            <Select label="سعر العقار" value={filters.price_range || ''} onChange={e => setF('price_range', e.target.value)}
+              options={PRICE_RANGES} />
+            <Input label="بحث بالكود" placeholder="مثال: RE-2026-001" value={filters.code || ''}
+              onChange={e => setF('code', e.target.value)} />
           </div>
         </div>
 
         {/* Cards Grid */}
         {isLoading && <Loading />}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {data?.data?.data?.map(prop => (
             <div key={prop.id}
               className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden hover:border-gray-600 transition-all">
@@ -510,6 +353,27 @@ export default function PropertiesPage() {
             </div>
           ))}
         </div>
+
+        {!isLoading && data?.data?.data?.length === 0 && (
+          <p className="text-center text-sm text-gray-500 py-10">لا توجد عقارات مطابقة</p>
+        )}
+
+        {/* الصفحات */}
+        {(data?.data?.last_page || 1) > 1 && (
+          <div className="flex items-center justify-center gap-3 text-sm">
+            <Btn size="sm" variant="outline" disabled={(data.data.current_page || 1) <= 1}
+              onClick={() => setFilters(f => ({ ...f, page: (data.data.current_page || 1) - 1 }))}>
+              <ChevronRight size={14}/> السابق
+            </Btn>
+            <span className="text-gray-400">
+              صفحة {data.data.current_page} من {data.data.last_page} · {data.data.total} عقار
+            </span>
+            <Btn size="sm" variant="outline" disabled={data.data.current_page >= data.data.last_page}
+              onClick={() => setFilters(f => ({ ...f, page: data.data.current_page + 1 }))}>
+              التالي <ChevronLeft size={14}/>
+            </Btn>
+          </div>
+        )}
       </div>
 
       <PropertyForm
@@ -523,22 +387,6 @@ export default function PropertiesPage() {
       />
       {showDetail && <PropertyDetail id={showDetail} onClose={() => setShowDetail(null)} />}
 
-      {showExport && (
-        <Modal open onClose={() => setShowExport(false)} title="تصدير تقرير العقارات"
-          footer={
-            <>
-              <Btn onClick={handleExport}><Download size={14}/> تصدير</Btn>
-              <Btn variant="outline" onClick={() => setShowExport(false)}>إلغاء</Btn>
-            </>
-          }>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="من تاريخ" type="date" value={exportRange.date_from}
-              onChange={e => setExportRange(r => ({ ...r, date_from: e.target.value }))} />
-            <Input label="إلى تاريخ" type="date" value={exportRange.date_to}
-              onChange={e => setExportRange(r => ({ ...r, date_to: e.target.value }))} />
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
