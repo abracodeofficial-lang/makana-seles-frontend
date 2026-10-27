@@ -281,7 +281,7 @@ export default function PropertiesPage() {
                     <div className="flex items-center gap-2">
                       <Avatar name={prop.owner?.name || ''} size="sm" />
                       <div>
-                        <p className="text-xs font-semibold text-gray-200">{prop.owner?.name}</p>
+                        <p className="text-xs font-semibold text-gray-200">{prop.owner?.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
                         <p className="text-xs text-gray-500 font-mono">{prop.owner?.owner_code}</p>
                       </div>
                     </div>
@@ -417,7 +417,6 @@ const TAB_RULES = {
     longitude:    outOf(f.longitude, -180, 180) && 'خط العرض لازم يكون بين -180 و 180',
   }),
   owner: (f) => ({
-    owner_id:        !f.owner_id && 'اختار مالك العقار: اكتب اسمه واضغط عليه من القائمة، أو أضفه كمالك جديد',
     mortgage_amount: f.mortgage_status === 'مرهون' && negative(f.mortgage_amount) && 'مبلغ الرهن ما بيصير سالب',
     annual_income:   negative(f.annual_income) && 'الإيراد ما بيصير سالب',
   }),
@@ -499,9 +498,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
     setErrors(next);
     if (firstBad) {
       setTab(firstBad);
-      toast.error(firstBad === 'owner' && !form.owner_id && ownerSearch
-        ? 'كتبت اسم المالك بس ما اخترته — اضغط على اسمه من القائمة، أو أضفه كمالك جديد'
-        : firstMsg, { id: 'property-form-validation', duration: 4000 });
+      toast.error(firstMsg, { id: 'property-form-validation', duration: 4000 });
     }
     return firstBad;
   };
@@ -545,7 +542,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
   const handleOwnerSelect = (owner) => {
     setSelectedOwner(owner);
     set('owner_id', owner.id);
-    setOwnerSearch(owner.name);
+    setOwnerSearch(owner.name || owner.owner_code || '');
     setNewOwner(null);
   };
 
@@ -553,13 +550,13 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
   const [newOwner, setNewOwner] = useState(null);   // { name, phone, type }
   const [savingOwner, setSavingOwner] = useState(false);
   const createOwner = async () => {
-    if (!newOwner.name?.trim() || !newOwner.phone?.trim()) {
-      toast.error('اسم المالك ورقم الجوال مطلوبين');
+    if (!newOwner.phone?.trim()) {
+      toast.error('رقم جوال المالك مطلوب');
       return;
     }
     setSavingOwner(true);
     try {
-      const res = await ownersApi.create({ name: newOwner.name.trim(), phone: newOwner.phone.trim(), type: newOwner.type || 'مالك' });
+      const res = await ownersApi.create({ name: newOwner.name?.trim() || null, phone: newOwner.phone.trim(), type: newOwner.type || 'مالك' });
       handleOwnerSelect(res.data.data);
       qc.invalidateQueries(['owners']);
       toast.success('تم إضافة المالك واختياره للعقار');
@@ -610,7 +607,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
   const tabs = [
     { key: 'basic',    label: 'معلومات أساسية' },
     { key: 'location', label: 'الموقع' },
-    { key: 'owner',    label: 'المالك *' },
+    { key: 'owner',    label: 'المالك' },
     { key: 'details',  label: 'التفاصيل' },
     { key: 'media',    label: 'المميزات' },
   ];
@@ -621,7 +618,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
   const tabComplete = {
     basic:    !!form.name && !!form.property_type_id,
     location: true,
-    owner:    !!form.owner_id,
+    owner:    true,
     details:  true,
     media:    true,
   };
@@ -744,7 +741,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       {tab === 'owner' && (
         <div className="space-y-4">
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">مالك العقار *</label>
+            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">مالك العقار <span className="normal-case font-normal text-gray-500">(اختياري)</span></label>
             {!selectedOwner && (
               <input
                 value={ownerSearch}
@@ -778,7 +775,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
               <div className="p-3 rounded-lg bg-gray-800 border border-blue-500/40 space-y-3">
                 <p className="text-sm font-semibold text-gray-100">مالك جديد</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <Input label="الاسم *" value={newOwner.name} onChange={e => setNewOwner(o => ({ ...o, name: e.target.value }))} />
+                  <Input label="الاسم" value={newOwner.name} onChange={e => setNewOwner(o => ({ ...o, name: e.target.value }))} />
                   <Input label="رقم الجوال *" value={newOwner.phone} onChange={e => setNewOwner(o => ({ ...o, phone: e.target.value }))} dir="ltr" placeholder="05xxxxxxxx" />
                   <Select label="الصفة" clearable={false} value={newOwner.type} onChange={e => setNewOwner(o => ({ ...o, type: e.target.value }))}
                     options={['مالك','وكيل','وسيط','مكتب','مطور','مشروع'].map(v => ({ value: v, label: v }))} />
@@ -797,7 +794,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
                     className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-0">
                     <Avatar name={owner.name} size="sm" />
                     <div>
-                      <p className="text-sm font-semibold text-gray-100">{owner.name}</p>
+                      <p className="text-sm font-semibold text-gray-100">{owner.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
                       <p className="text-xs text-gray-500">{owner.owner_code} · {owner.phone}</p>
                     </div>
                     <Badge label={owner.type} color="blue" />
@@ -813,7 +810,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
                 <div className="flex items-center gap-3">
                   <Avatar name={selectedOwner.name} size="md" />
                   <div>
-                    <p className="font-bold text-gray-100">{selectedOwner.name}</p>
+                    <p className="font-bold text-gray-100">{selectedOwner.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
                     <p className="text-xs text-gray-400">{selectedOwner.owner_code} · {selectedOwner.phone}</p>
                   </div>
                 </div>
@@ -1006,6 +1003,9 @@ function PropertyDetail({ id, onClose }) {
         {/* ─── العمود الأيسر ─── */}
         <div>
           <SectionTitle>المالك</SectionTitle>
+          {!p.owner ? (
+            <p className="bg-gray-800 rounded-xl p-3 mb-3 text-sm text-gray-500">لم يُحدَّد مالك لهذا العقار</p>
+          ) : (
           <div className="bg-gray-800 rounded-xl p-3 mb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1035,6 +1035,7 @@ function PropertyDetail({ id, onClose }) {
               )}
             </div>
           </div>
+          )}
           <InfoRow label="صفة المعلن"     value={p.advertiser_role} />
           <InfoRow label="حالة الرهن"     value={p.mortgage_status} />
           {p.mortgage_amount > 0 && <InfoRow label="مبلغ الرهن" value={`${fmt(p.mortgage_amount)} ريال`} />}

@@ -256,7 +256,7 @@ export default function LeadsPage() {
                     <Td>
                       <div className="flex items-center gap-2">
                         <Avatar name={lead.name} size="sm" />
-                        <p className="font-semibold text-gray-100 text-xs">{lead.name}</p>
+                        <p className="font-semibold text-gray-100 text-xs">{lead.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
                       </div>
                     </Td>
                     <Td className="text-gray-400">{lead.phone}</Td>
@@ -403,7 +403,6 @@ function LeadForm({ open, onClose, editing }) {
   }, [open, editing]);
 
   const handleSave = async () => {
-    if (!form.name?.trim()) { toast.error('الاسم الكامل مطلوب'); return; }
     if (!form.phone?.trim()) { toast.error('رقم التواصل مطلوب'); return; }
     setLoading(true);
     try {
@@ -429,7 +428,7 @@ function LeadForm({ open, onClose, editing }) {
         </>
       }>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Input  label="الاسم الكامل *"  value={form.name}  onChange={e => set('name', e.target.value)} />
+        <Input  label="الاسم الكامل"  value={form.name}  onChange={e => set('name', e.target.value)} />
         <Input  label="رقم التواصل *"   value={form.phone} onChange={e => set('phone', e.target.value)} />
         <Select label="صفة المتقدم"     value={form.applicant_type}    onChange={e => set('applicant_type', e.target.value)}
           options={['مهتم','مشتري','مستأجر','وسيط','وكيل','مطور'].map(v => ({ value: v, label: v }))} />
@@ -513,7 +512,7 @@ function LeadDetail({ id, onClose }) {
       <div className="flex items-center gap-4 mb-5 pb-4 border-b border-gray-800">
         <Avatar name={l.name} size="lg" />
         <div>
-          <p className="text-lg font-bold text-gray-100">{l.name}</p>
+          <p className="text-lg font-bold text-gray-100">{l.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
           <p className="text-xs text-gray-500 font-mono">{l.lead_code} · {l.phone}</p>
           <div className="flex gap-2 mt-1">
             <Badge label={l.classification} color={CLASS_COLOR[l.classification]}/>

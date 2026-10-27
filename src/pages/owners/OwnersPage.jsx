@@ -212,7 +212,7 @@ export default function OwnersPage() {
                   <div className="flex items-center gap-2">
                     <Avatar name={owner.name} size="sm" />
                     <div>
-                      <p className="font-semibold text-gray-100 text-xs">{owner.name}</p>
+                      <p className="font-semibold text-gray-100 text-xs">{owner.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
                       <p className="text-gray-500 text-xs">{owner.properties_count} عقار</p>
                     </div>
                   </div>
@@ -324,7 +324,7 @@ function OwnerForm({ open, onClose, editing }) {
         </>
       }>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Input  label="اسم المالك *"        value={form.name}  onChange={e => set('name', e.target.value)} placeholder="الاسم الكامل" />
+        <Input  label="اسم المالك"        value={form.name}  onChange={e => set('name', e.target.value)} placeholder="الاسم الكامل" />
         <Select label="صفة المالك *"         value={form.type}  onChange={e => set('type', e.target.value)} options={typeOpts} />
         <Input  label="رقم الهاتف *"         value={form.phone}     onChange={e => set('phone',     e.target.value)} placeholder="05xxxxxxxx" />
         <Input  label="رقم الواتساب"         value={form.whatsapp || ''} onChange={e => set('whatsapp', e.target.value)} placeholder="05xxxxxxxx (إن اختلف)" />
@@ -365,7 +365,7 @@ function OwnerDetail({ id, onClose }) {
       <div className="flex items-center gap-4 mb-5 pb-4 border-b border-gray-800">
         <Avatar name={o.name} size="lg" />
         <div>
-          <p className="text-lg font-bold text-gray-100">{o.name}</p>
+          <p className="text-lg font-bold text-gray-100">{o.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
           <p className="text-xs text-gray-500">{o.owner_code}</p>
           <Badge label={o.type} color={TYPE_COLOR[o.type] || 'gray'} />
         </div>
