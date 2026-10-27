@@ -65,12 +65,12 @@ export default function ReportsPage() {
       <div className="p-4 sm:p-6 space-y-5">
 
         {/* مفتاح التبويبات */}
-        <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-xl p-1 w-fit">
+        <div className="flex gap-1 bg-gray-800 border border-gray-700 rounded-xl p-1 w-full sm:w-fit overflow-x-auto">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all
+              className={`flex-1 sm:flex-none justify-center whitespace-nowrap flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all
                 ${tab === t.id
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
                   : 'text-gray-400 hover:text-gray-200'

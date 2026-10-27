@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useState, useEffect, Component } from 'react';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
@@ -28,9 +28,28 @@ const NAV = [
   { label: 'الإعدادات',        path: '/settings',      icon: Settings,    section: null, perm: 'settings' },
 ];
 
+// بيمسك أي خطأ بالصفحة ويعرض رسالة بدل شاشة سودا لكل النظام
+class PageErrorBoundary extends Component {
+  state = { error: null };
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error) { console.error('Page crashed:', error); }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-gray-400 min-h-[50vh]">
+        <p className="text-4xl">⚠️</p>
+        <p className="text-sm">صار خطأ بعرض هالصفحة.</p>
+        <button onClick={() => window.location.reload()}
+          className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">إعادة المحاولة</button>
+      </div>
+    );
+  }
+}
+
 export default function Layout() {
   const { employee, permissions, logout } = useAuthStore();
   const navigate   = useNavigate();
+  const location   = useLocation();
   const [collapsed,  setCollapsed]  = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -170,7 +189,10 @@ export default function Layout() {
         <PushPrompt />
 
         <div className="flex-1 overflow-y-auto">
-          <Outlet />
+          {/* خطأ بصفحة وحدة ما بيطفّي كل النظام — key بيصفّر الحالة عند تغيير الصفحة */}
+          <PageErrorBoundary key={location.pathname}>
+            <Outlet />
+          </PageErrorBoundary>
         </div>
       </main>
     </div>
@@ -317,7 +339,7 @@ function PushPrompt() {
 
 export function PageHeader({ title, subtitle, actions }) {
   return (
-    <div className="sticky top-0 z-10 bg-gray-900/95 backdrop-blur border-b border-gray-800 px-4 sm:px-6 py-3 sm:py-4">
+    <div className="sm:sticky top-0 z-10 bg-gray-900/95 backdrop-blur border-b border-gray-800 px-4 sm:px-6 py-3 sm:py-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
           <h1 className="text-base sm:text-lg font-bold text-gray-100 truncate">{title}</h1>

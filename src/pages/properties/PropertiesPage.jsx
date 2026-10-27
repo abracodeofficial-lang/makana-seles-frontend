@@ -7,7 +7,7 @@ import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Card, Modal, Input, Select,
   Textarea, Loading, ErrorMsg, InfoRow, Avatar,
-  Table, Tr, Td, CountBox,
+  Table, Tr, Td, CountBox, FilterPanel,
 } from '../../components/ui';
 import { RichText } from '../../components/ui/RichText';
 // المحرر (TipTap) تقيل — بينحمّل بس لما ينفتح فورم العقار
@@ -89,7 +89,8 @@ export default function PropertiesPage() {
   const setF = (k, v) => setFilters(f => ({ ...f, [k]: v || undefined, page: undefined }));
   const toggleF = (k, v) => setFilters(f => ({ ...f, [k]: String(f[k]) === String(v) ? undefined : v, page: undefined }));
   const hasDate    = !!(filters.date_from || filters.date_to);
-  const hasFilters = ['status', 'property_type_id', 'direction', 'price_range', 'code'].some(k => filters[k]);
+  const activeFilters = ['status', 'property_type_id', 'direction', 'price_range', 'code'].filter(k => filters[k]).length;
+  const hasFilters = activeFilters > 0;
   const clearFilters = () => setFilters(f => ({ date_from: f.date_from, date_to: f.date_to }));
 
   const deleteMut = useMutation({
@@ -161,13 +162,13 @@ export default function PropertiesPage() {
         {/* ① الفترة + التصدير */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="w-full sm:w-44">
+            <div className="w-[calc(50%-6px)] sm:w-44">
               <Input label="من تاريخ" type="date" value={filters.date_from || ''} onChange={e => setF('date_from', e.target.value)} />
             </div>
-            <div className="w-full sm:w-44">
+            <div className="w-[calc(50%-6px)] sm:w-44">
               <Input label="إلى تاريخ" type="date" value={filters.date_to || ''} onChange={e => setF('date_to', e.target.value)} />
             </div>
-            <Btn variant="outline" loading={exporting} onClick={handleExport} className="h-[42px]">
+            <Btn variant="outline" loading={exporting} onClick={handleExport} className="h-[42px] w-full sm:w-auto justify-center">
               <Download size={14}/> تصدير إكسل
             </Btn>
             {hasDate && (
@@ -183,7 +184,7 @@ export default function PropertiesPage() {
 
         {/* ② العدادات */}
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <StatCard label="العقارات الجاري تسويقها" value={stats.marketing} icon={<TrendingUp size={18}/>} color="purple" />
             <StatCard label="إجمالي العقارات"          value={stats.total}     icon={<Building2 size={18}/>}  color="blue" />
             <StatCard label="المتاحة"                  value={stats.available} icon={<CheckCircle size={18}/>} color="green" />
@@ -213,15 +214,7 @@ export default function PropertiesPage() {
         </div>
 
         {/* ③ الفلاتر */}
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">الفلاتر</p>
-            {hasFilters && (
-              <Btn size="sm" variant="outline" onClick={clearFilters}>
-                <X size={13}/> إلغاء الفلترة
-              </Btn>
-            )}
-          </div>
+        <FilterPanel activeCount={activeFilters} onClear={clearFilters}>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <Select label="الحالة" value={filters.status || ''} onChange={e => setF('status', e.target.value)}
               options={PROPERTY_STATUSES.map(v => ({ value: v, label: v }))} />
@@ -234,7 +227,7 @@ export default function PropertiesPage() {
             <Input label="بحث بالكود" placeholder="مثال: RE-2026-001" value={filters.code || ''}
               onChange={e => setF('code', e.target.value)} />
           </div>
-        </div>
+        </FilterPanel>
 
         {/* Cards Grid */}
         {isLoading && <Loading />}
@@ -497,7 +490,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
     queryFn: () => lookupApi.propertyTypes().then(r => r.data),
     staleTime: 300_000,
   });
-  const propertyTypeOptions = (typesData?.data || [])
+  const propertyTypeOptions = (Array.isArray(typesData?.data) ? typesData.data : Array.isArray(typesData) ? typesData : [])
     .filter(t => t.is_active !== false || String(t.id) === String(form.property_type_id))
     .map(t => ({ value: String(t.id), label: t.name }));
 
@@ -560,23 +553,23 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       title={editing ? 'تعديل بيانات العقار' : 'إضافة عقار جديد'}
       width="max-w-3xl"
       footer={
-        <div className="flex items-center justify-between w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
           {/* التنقل بين التابات */}
           <div className="flex gap-2">
             {tabIdx > 0 && (
-              <Btn variant="outline" onClick={() => setTab(TAB_KEYS[tabIdx - 1])}>
+              <Btn variant="outline" className="flex-1 sm:flex-none justify-center" onClick={() => setTab(TAB_KEYS[tabIdx - 1])}>
                 <ChevronRight size={14}/> السابق
               </Btn>
             )}
             {tabIdx < TAB_KEYS.length - 1 && (
-              <Btn variant="outline" onClick={() => setTab(TAB_KEYS[tabIdx + 1])}>
+              <Btn variant="outline" className="flex-1 sm:flex-none justify-center" onClick={() => setTab(TAB_KEYS[tabIdx + 1])}>
                 التالي <ChevronLeft size={14}/>
               </Btn>
             )}
           </div>
           {/* أزرار الحفظ والإلغاء */}
           <div className="flex gap-2">
-            <Btn onClick={handleSave} loading={loading}>
+            <Btn onClick={handleSave} loading={loading} className="flex-1 sm:flex-none justify-center">
               💾 {editing ? 'حفظ التعديلات' : 'إضافة العقار'}
             </Btn>
             <Btn variant="outline" onClick={handleClose}>إلغاء</Btn>
@@ -585,10 +578,10 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       }>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-800 rounded-lg p-1 mb-5">
+      <div className="flex gap-1 bg-gray-800 rounded-lg p-1 mb-5 overflow-x-auto">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex-1 py-2 rounded-md text-xs font-semibold transition-all relative ${
+            className={`flex-1 whitespace-nowrap px-2.5 py-2 rounded-md text-xs font-semibold transition-all relative ${
               tab === t.key ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200'
             }`}>
             {t.label}
@@ -604,7 +597,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
 
       {/* Tab: المعلومات الأساسية */}
       {tab === 'basic' && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="اسم العقار *"    value={form.name}        onChange={e => set('name', e.target.value)} />
           <Select label="نوع العقار *"   value={form.property_type_id ? String(form.property_type_id) : ''} onChange={e => set('property_type_id', e.target.value)}
             options={propertyTypeOptions} />
@@ -627,7 +620,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
 
       {/* Tab: الموقع */}
       {tab === 'location' && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Select label="المدينة" value={form.city_id}
             onChange={e => { set('city_id', e.target.value); set('neighborhood_id', ''); }}
             options={(citiesData || []).map(c => ({ value: String(c.id), label: c.name }))} />
@@ -641,7 +634,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             type="number" min="0" step="0.5" placeholder="مثلاً 20" />
           <Select label="الاتجاه" value={form.direction || ''} onChange={e => set('direction', e.target.value)}
             options={['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية'].map(v => ({ value: v, label: v }))} />
-          <div className="col-span-2 space-y-1">
+          <div className="sm:col-span-2 space-y-1">
             <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">
               واجهة العقار <span className="normal-case font-normal text-gray-500">(اختار أكتر من وحدة إذا العقار زاوية)</span>
             </label>
@@ -658,12 +651,12 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
               })}
             </div>
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <Input label="رابط الموقع (Google Maps)" value={form.map_url || ''} onChange={e => set('map_url', e.target.value)} />
           </div>
           <Input label="خط الطول" value={form.latitude  || ''} onChange={e => set('latitude',  e.target.value)} type="number" />
           <Input label="خط العرض" value={form.longitude || ''} onChange={e => set('longitude', e.target.value)} type="number" />
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <Textarea label="المواقع القريبة" value={form.nearby_places || ''} onChange={e => set('nearby_places', e.target.value)} placeholder="مدارس، مساجد، أسواق..." />
           </div>
         </div>
@@ -752,7 +745,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <Select label="صفة المعلن"   value={form.advertiser_role}   onChange={e => set('advertiser_role', e.target.value)}
               options={['مالك','وكيل','مطور'].map(v => ({ value: v, label: v }))} />
             <Select label="حالة الرهن"   value={form.mortgage_status}   onChange={e => set('mortgage_status', e.target.value)}
@@ -771,7 +764,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
 
       {/* Tab: التفاصيل */}
       {tab === 'details' && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Input label="عدد الغرف"      value={form.rooms_count}     onChange={e => set('rooms_count',     e.target.value)} type="number" />
           <Input label="عدد الحمامات"   value={form.bathrooms_count} onChange={e => set('bathrooms_count', e.target.value)} type="number" />
           <Input label="عدد الصالات"    value={form.halls_count}     onChange={e => set('halls_count',     e.target.value)} type="number" />
@@ -793,7 +786,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       {/* Tab: المميزات والوسائط */}
       {tab === 'media' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select label="حالة التصوير"  value={form.photo_status}     onChange={e => set('photo_status',     e.target.value)} options={mediaOpts} />
             <Select label="حالة التصميم"  value={form.design_status}    onChange={e => set('design_status',    e.target.value)} options={mediaOpts} />
             <Select label="حالة الفيديو"  value={form.video_status}     onChange={e => set('video_status',     e.target.value)} options={mediaOpts} />
@@ -874,7 +867,7 @@ function PropertyDetail({ id, onClose }) {
         <MediaBar photo={p.photo_status} design={p.design_status} video={p.video_status} marketing={p.marketing_status} />
       </div>
 
-      <div className="grid grid-cols-2 gap-x-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
 
         {/* ─── العمود الأيمن ─── */}
         <div>

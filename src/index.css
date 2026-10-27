@@ -20,6 +20,27 @@ body { font-family: 'Cairo', sans-serif; @apply bg-gray-950 text-gray-200; }
 .rich-content p:empty::before { content: '\00a0'; }
 .ProseMirror:focus { outline: none; }
 
+/* الجداول على الموبايل: كل صف كرت، وكل خلية "العنوان ← القيمة" — بدل سكرول أفقي */
+@media (max-width: 639px) {
+  .rtable { min-width: 0 !important; padding: 2px 10px; }
+  .rtable thead { display: none; }
+  .rtable, .rtable tbody, .rtable tr, .rtable td { display: block; width: 100%; }
+  .rtable tr {
+    margin: 10px 0; padding: 4px 0;
+    background: #2C2320; border: 1px solid #4B3D37 !important; border-radius: 14px;
+  }
+  .rtable td {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 7px 14px; text-align: left; min-height: 38px; word-break: break-word;
+  }
+  .rtable td + td { border-top: 1px solid rgba(75, 61, 55, 0.5); }
+  .rtable td[data-label]::before {
+    content: attr(data-label); flex-shrink: 0;
+    color: #978371; font-size: 12px; font-weight: 600; text-align: right;
+  }
+  .rtable td:empty, .rtable td[data-label=""]::before { display: none; }
+}
+
 ::selection { background: rgba(191, 136, 87, 0.35); color: #F7EAD2; }
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

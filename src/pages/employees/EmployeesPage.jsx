@@ -264,7 +264,7 @@ function EmployeeWizard({ hrLookup, onClose, onSaved }) {
 
       {/* Step 1 — المعلومات الأساسية (مطلوبة) */}
       {step === 0 && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div><Input label="الاسم الكامل *"       value={form.full_name}      onChange={e => set('full_name', e.target.value)} /><ErrMsg field="full_name"/></div>
           <div><Input label="رقم الهوية *"         value={form.national_id}    onChange={e => set('national_id', e.target.value)} /><ErrMsg field="national_id"/></div>
           <div><Input label="رقم الهاتف *"         value={form.phone}          onChange={e => set('phone', e.target.value)} /><ErrMsg field="phone"/></div>
@@ -275,7 +275,7 @@ function EmployeeWizard({ hrLookup, onClose, onSaved }) {
               options={[{ value: '', label: 'اختر...' }, ...['أعزب','متزوج','مطلق','أرمل'].map(v => ({ value: v, label: v }))]} />
             <ErrMsg field="marital_status"/>
           </div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <Input label="العنوان *" value={form.address} onChange={e => set('address', e.target.value)} />
             <ErrMsg field="address"/>
           </div>
@@ -284,7 +284,7 @@ function EmployeeWizard({ hrLookup, onClose, onSaved }) {
 
       {/* Step 2 — المعلومات الوظيفية (اختيارية) */}
       {step === 1 && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div><Select label="القسم"          value={form.department_id}    onChange={e => set('department_id', e.target.value)} options={depts} /><ErrMsg field="department_id"/></div>
           <div><Input  label="المسمى الوظيفي" value={form.job_title}        onChange={e => set('job_title', e.target.value)} /><ErrMsg field="job_title"/></div>
           <div><Select label="نوع التعاقد"    value={form.contract_type_id} onChange={e => set('contract_type_id', e.target.value)} options={contracts} /><ErrMsg field="contract_type_id"/></div>
@@ -295,7 +295,7 @@ function EmployeeWizard({ hrLookup, onClose, onSaved }) {
 
       {/* Step 3 — المعلومات المالية (اختيارية) */}
       {step === 2 && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div><Input label="الراتب الأساسي (﷼)"   value={form.basic_salary}        onChange={e => set('basic_salary', e.target.value)} type="number" /><ErrMsg field="basic_salary"/></div>
           <div><Input label="بدل السكن (﷼)"         value={form.housing_allowance}   onChange={e => set('housing_allowance', e.target.value)} type="number" /><ErrMsg field="housing_allowance"/></div>
           <div><Input label="بدل المواصلات (﷼)"     value={form.transport_allowance} onChange={e => set('transport_allowance', e.target.value)} type="number" /><ErrMsg field="transport_allowance"/></div>
@@ -304,7 +304,7 @@ function EmployeeWizard({ hrLookup, onClose, onSaved }) {
           <div><Input label="نسبة العمولة (%)"       value={form.commission_rate}     onChange={e => set('commission_rate', e.target.value)} type="number" /><ErrMsg field="commission_rate"/></div>
 
           {/* ملخص الراتب */}
-          <div className="col-span-2 bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+          <div className="sm:col-span-2 bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
             <p className="text-xs text-gray-400 mb-2 font-semibold">إجمالي الراتب</p>
             <p className="text-2xl font-black text-blue-400">
               {fmt(
@@ -493,7 +493,7 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
           {/* Tab: البيانات العامة */}
           {tab === 'info' && (
             editMode ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="الاسم الكامل"       value={editForm.full_name || ''}   onChange={e => set('full_name', e.target.value)} />
                 <Input label="رقم الهاتف"          value={editForm.phone || ''}       onChange={e => set('phone', e.target.value)} />
                 <Input label="البريد الإلكتروني"   value={editForm.email || ''}       onChange={e => set('email', e.target.value)} type="email" />
@@ -503,12 +503,12 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
                 <Input  label="المسمى الوظيفي"    value={editForm.job_title || ''}   onChange={e => set('job_title', e.target.value)} />
                 <Select label="نوع التعاقد"        value={String(editForm.contract_type_id || '')} onChange={e => set('contract_type_id', e.target.value)} options={contracts} />
                 <Select label="الشفت"              value={String(editForm.shift_id || '')} onChange={e => set('shift_id', e.target.value)} options={shifts} />
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <Input label="العنوان *" value={editForm.address || ''} onChange={e => set('address', e.target.value)} />
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-x-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
                 <div>
                   <p className="text-xs text-gray-400 uppercase font-semibold mb-3">البيانات الشخصية</p>
                   <InfoRow label="الاسم"             value={emp.full_name} />
@@ -621,7 +621,7 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
               {/* الراتب الحالي */}
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
                 <p className="text-xs text-gray-400 mb-3 font-semibold uppercase">الراتب الحالي</p>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {[
                     ['الراتب الأساسي', emp.basic_salary],
                     ['بدل السكن',      emp.housing_allowance],
@@ -630,7 +630,7 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
                     ['بدلات أخرى',    emp.other_allowances],
                     ['الإجمالي',       data?.total_salary],
                   ].map(([label, val]) => (
-                    <div key={label} className={label === 'الإجمالي' ? 'col-span-3 border-t border-blue-500/20 pt-3 mt-1' : ''}>
+                    <div key={label} className={label === 'الإجمالي' ? 'col-span-2 sm:col-span-3 border-t border-blue-500/20 pt-3 mt-1' : ''}>
                       <p className="text-xs text-gray-400">{label}</p>
                       <p className={`font-bold ${label === 'الإجمالي' ? 'text-2xl text-blue-400' : 'text-gray-100'}`}>
                         {fmt(val)} ﷼

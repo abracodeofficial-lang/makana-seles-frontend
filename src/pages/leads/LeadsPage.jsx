@@ -6,7 +6,7 @@ import { leadsApi, visitsApi, employeesApi, lookupApi, operationAssignmentsApi }
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
-  Textarea, SearchBox, Avatar, Card, Loading, InfoRow, CountBox, BoxSection,
+  Textarea, SearchBox, Avatar, Card, Loading, InfoRow, CountBox, FilterPanel, BoxSection,
 } from '../../components/ui';
 import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X, UserCheck, Home, Download, Compass, Banknote, CircleDot } from 'lucide-react';
 
@@ -54,7 +54,8 @@ export default function LeadsPage() {
   const toggleF = (k, v) => setFilters(f => ({ ...f, [k]: String(f[k]) === String(v) ? undefined : v, page: undefined }));
   const hasDate    = !!(filters.date_from || filters.date_to);
   const FILTER_KEYS = ['employee_id', 'specialist_id', 'applicant_type', 'phone', 'seriousness_level', 'property_type_id', 'direction', 'price_category', 'request_status'];
-  const hasFilters = FILTER_KEYS.some(k => filters[k]);
+  const activeFilters = FILTER_KEYS.filter(k => filters[k]).length;
+  const hasFilters = activeFilters > 0;
   const clearFilters = () => setFilters(f => ({ date_from: f.date_from, date_to: f.date_to }));
 
   const { data: visitsData } = useQuery({
@@ -134,13 +135,13 @@ export default function LeadsPage() {
         {/* ① الفترة + التصدير */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="w-full sm:w-44">
+            <div className="w-[calc(50%-6px)] sm:w-44">
               <Input label="من تاريخ" type="date" value={filters.date_from || ''} onChange={e => setF('date_from', e.target.value)} />
             </div>
-            <div className="w-full sm:w-44">
+            <div className="w-[calc(50%-6px)] sm:w-44">
               <Input label="إلى تاريخ" type="date" value={filters.date_to || ''} onChange={e => setF('date_to', e.target.value)} />
             </div>
-            <Btn variant="outline" loading={exporting} onClick={handleExport} className="h-[42px]">
+            <Btn variant="outline" loading={exporting} onClick={handleExport} className="h-[42px] w-full sm:w-auto justify-center">
               <Download size={14}/> تصدير إكسل
             </Btn>
             {hasDate && (
@@ -211,15 +212,7 @@ export default function LeadsPage() {
         </div>
 
         {/* ③ الفلاتر */}
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">الفلاتر</p>
-            {hasFilters && (
-              <Btn size="sm" variant="outline" onClick={clearFilters}>
-                <X size={13}/> إلغاء الفلترة
-              </Btn>
-            )}
-          </div>
+        <FilterPanel activeCount={activeFilters} onClear={clearFilters}>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <Select label="الأوبريشن" value={filters.employee_id || ''} onChange={e => setF('employee_id', e.target.value)}
               options={byOperation.map(e => ({ value: String(e.id), label: e.label }))} />
@@ -240,13 +233,13 @@ export default function LeadsPage() {
             <Select label="حالة الطلب" value={filters.request_status || ''} onChange={e => setF('request_status', e.target.value)}
               options={byStatus.map(s => ({ value: s.label, label: s.label }))} />
           </div>
-        </div>
+        </FilterPanel>
 
         {/* Tabs */}
-        <div className="flex bg-gray-800 rounded-lg p-1 w-fit">
+        <div className="flex bg-gray-800 rounded-lg p-1 w-full sm:w-fit overflow-x-auto">
           {[['leads','قائمة المهتمين'],['visits','الزيارات المجدولة'],['operation','لوحة الأوبريشن']].map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`px-5 py-2 rounded-md text-sm font-semibold transition-all ${tab === key ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200'}`}>
+              className={`flex-1 sm:flex-none whitespace-nowrap px-3 sm:px-5 py-2 rounded-md text-xs sm:text-sm font-semibold transition-all ${tab === key ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200'}`}>
               {label}
             </button>
           ))}
@@ -435,7 +428,7 @@ function LeadForm({ open, onClose, editing }) {
           <Btn variant="outline" onClick={onClose}>إلغاء</Btn>
         </>
       }>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input  label="الاسم الكامل *"  value={form.name}  onChange={e => set('name', e.target.value)} />
         <Input  label="رقم التواصل *"   value={form.phone} onChange={e => set('phone', e.target.value)} />
         <Select label="صفة المتقدم"     value={form.applicant_type}    onChange={e => set('applicant_type', e.target.value)}
@@ -458,7 +451,7 @@ function LeadForm({ open, onClose, editing }) {
         <Select label="هدف الشراء"       value={form.purchase_goal || ''} onChange={e => set('purchase_goal', e.target.value)}
           options={['استثمار','سكن','سكن واستثمار'].map(v => ({ value: v, label: v }))} />
         <Input  label="تاريخ المتابعة"   value={form.follow_up_date || ''} onChange={e => set('follow_up_date', e.target.value)} type="date" />
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <Textarea label="ملاحظات" value={form.update_notes || ''} onChange={e => set('update_notes', e.target.value)} />
         </div>
       </div>

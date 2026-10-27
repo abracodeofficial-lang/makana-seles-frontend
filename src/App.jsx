@@ -25,14 +25,14 @@ const BroadcastPage    = lazy(() => import('./pages/broadcast/BroadcastPage'));
 function Dashboard() {
   const { employee } = useAuthStore();
   return (
-    <div className="p-6 font-[Cairo]" dir="rtl">
+    <div className="p-4 sm:p-6 font-[Cairo]" dir="rtl">
       <div className="mb-8">
         <h1 className="text-2xl font-black text-gray-100">
           أهلاً، {employee?.full_name} 👋
         </h1>
         <p className="text-gray-500 text-sm mt-1">{employee?.job_title}</p>
       </div>
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {[
           { emoji: '🏢', label: 'العقارات',         path: '/properties', color: 'blue' },
           { emoji: '👥', label: 'الملاك',            path: '/owners',     color: 'green' },

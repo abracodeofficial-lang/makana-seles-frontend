@@ -6,7 +6,7 @@ import { attendanceApi, employeesApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Card, Modal, Input, Select,
-  Textarea, Loading, Avatar, Table, Tr, Td,
+  Textarea, Loading, Avatar, Table, Tr, Td, FilterPanel,
 } from '../../components/ui';
 import {
   UserCheck, Clock, UserX, Palmtree,
@@ -174,6 +174,7 @@ export default function AttendancePage() {
   };
   const hasActiveFilters = employeeId || departmentId || statusFilter || shiftId
     || dateFrom !== todayISO() || dateTo !== todayISO();
+  const activeFilterCount = [employeeId, departmentId, statusFilter, shiftId, dateFrom !== todayISO() || dateTo !== todayISO()].filter(Boolean).length;
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['attendance', dateFrom, dateTo, employeeId, departmentId, statusFilter, shiftId],
@@ -269,15 +270,7 @@ export default function AttendancePage() {
         </div>
 
         {/* الفلاتر */}
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">الفلاتر</p>
-            {hasActiveFilters && (
-              <Btn size="sm" variant="outline" onClick={resetFilters}>
-                <X size={13}/> إلغاء الفلترة
-              </Btn>
-            )}
-          </div>
+        <FilterPanel activeCount={activeFilterCount} onClear={resetFilters}>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div>
               <label className="block text-[10px] text-gray-500 mb-1">الموظف</label>
@@ -307,7 +300,7 @@ export default function AttendancePage() {
                 options={shifts.map(s => ({ value: String(s.id), label: s.name }))} />
             </div>
           </div>
-        </div>
+        </FilterPanel>
 
         {/* جدول الحضور */}
         <Card title={`سجلات حضور ${rangeLabel}`}>

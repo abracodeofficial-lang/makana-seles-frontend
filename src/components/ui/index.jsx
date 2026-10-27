@@ -1,4 +1,5 @@
-import { Loader2, AlertCircle, X } from 'lucide-react';
+import { Children, cloneElement, isValidElement, useState } from 'react';
+import { Loader2, AlertCircle, X, ChevronDown } from 'lucide-react';
 
 export function Btn({ children, variant = 'primary', size = 'md', loading, className = '', ...props }) {
   const base  = 'inline-flex items-center gap-1.5 font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-[Cairo] whitespace-nowrap';
@@ -48,13 +49,13 @@ export function StatCard({ label, value, icon, color = 'blue' }) {
   const bgColor    = colorClass.split(' ')[1];
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-5 hover:border-gray-600 transition-all">
+    <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 sm:p-5 hover:border-gray-600 transition-all min-w-0">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs text-gray-400 font-medium mb-1.5">{label}</p>
-          <p className={`text-xl sm:text-2xl font-black ${textColor}`}>{value ?? 0}</p>
+          <p className="text-[11px] sm:text-xs text-gray-400 font-medium mb-1 sm:mb-1.5 leading-tight">{label}</p>
+          <p className={`text-lg sm:text-2xl font-black ${textColor}`}>{value ?? 0}</p>
         </div>
-        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${bgColor}`}>
+        <div className={`hidden sm:flex w-10 h-10 rounded-lg items-center justify-center flex-shrink-0 ${bgColor}`}>
           {icon}
         </div>
       </div>
@@ -167,10 +168,13 @@ export function Modal({ open, onClose, title, children, footer, width = 'max-w-l
   );
 }
 
+// على الموبايل كل صف بيتحوّل لكرت (CSS بـ index.css: .rtable)، وكل خلية بتعرض اسم عمودها جنبها.
+// Table بيمرر العناوين للصفوف، والصف بيعطي كل خلية عنوانها حسب ترتيبها.
 export function Table({ headers, children }) {
+  const rows = Children.map(children, row => isValidElement(row) ? cloneElement(row, { headers }) : row);
   return (
     <div className="overflow-x-auto -mx-0">
-      <table className="w-full border-collapse min-w-max">
+      <table className="rtable w-full border-collapse min-w-max">
         <thead>
           <tr className="bg-gray-800/80">
             {headers.map((h, i) => (
@@ -180,26 +184,29 @@ export function Table({ headers, children }) {
             ))}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody>{rows}</tbody>
       </table>
     </div>
   );
 }
 
-export function Tr({ children, onClick }) {
+export function Tr({ children, onClick, headers }) {
+  const cells = headers
+    ? Children.toArray(children).map((cell, i) => isValidElement(cell) ? cloneElement(cell, { label: headers[i] }) : cell)
+    : children;
   return (
     <tr
       onClick={onClick}
       className={`border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${onClick ? 'cursor-pointer' : ''}`}
     >
-      {children}
+      {cells}
     </tr>
   );
 }
 
-export function Td({ children, className = '' }) {
+export function Td({ children, className = '', label }) {
   return (
-    <td className={`px-3 sm:px-4 py-3 text-sm text-gray-300 ${className}`}>
+    <td data-label={label || undefined} className={`px-3 sm:px-4 py-3 text-sm text-gray-300 ${className}`}>
       {children}
     </td>
   );
@@ -302,6 +309,27 @@ export function BoxSection({ icon, title, cols = '', fixed, children }) {
     <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-3">
       <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">{icon} {title}</p>
       <div className={`grid grid-cols-2 ${fixed ? '' : 'sm:grid-cols-4'} ${cols} gap-3`}>{children}</div>
+    </div>
+  );
+}
+
+// صندوق الفلاتر — على الموبايل مسكّر افتراضياً (بيبيّن عدد الفلاتر الفعّالة)، وعلى الكمبيوتر دايماً مفتوح
+export function FilterPanel({ activeCount = 0, onClear, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+      <div className="flex items-center justify-between gap-2">
+        <button type="button" onClick={() => setOpen(o => !o)}
+          className="flex items-center gap-2 text-xs font-semibold text-gray-400 uppercase tracking-wide sm:cursor-default">
+          الفلاتر
+          {activeCount > 0 && <span className="px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] leading-none">{activeCount}</span>}
+          <ChevronDown size={15} className={`sm:hidden transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {activeCount > 0 && onClear && (
+          <Btn size="sm" variant="outline" onClick={onClear}><X size={13}/> إلغاء الفلترة</Btn>
+        )}
+      </div>
+      <div className={`${open ? 'block' : 'hidden'} sm:block mt-3`}>{children}</div>
     </div>
   );
 }

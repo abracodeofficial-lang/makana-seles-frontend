@@ -94,8 +94,8 @@ export default function LeavesPage() {
         }
       />
 
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-4 gap-4">
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard label="إجمالي الطلبات" value={stats.total}    icon={<Calendar size={18}/>}    color="blue" />
           <StatCard label="قيد المراجعة"   value={stats.pending}  icon={<Clock size={18}/>}       color="amber" />
           <StatCard label="معتمدة"         value={stats.approved} icon={<CheckCircle size={18}/>} color="green" />

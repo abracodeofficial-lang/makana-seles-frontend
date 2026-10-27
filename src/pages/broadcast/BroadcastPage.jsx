@@ -85,12 +85,12 @@ export default function BroadcastPage() {
 
       <div className="p-4 sm:p-6 space-y-5">
         {view !== 'run' && (
-          <div className="flex gap-1 p-1 bg-gray-900 border border-gray-800 rounded-xl w-fit">
+          <div className="flex gap-1 p-1 bg-gray-900 border border-gray-800 rounded-xl w-full sm:w-fit">
             {allowed.map(a => {
               const Icon = AUDIENCES[a].icon;
               return (
                 <button key={a} onClick={() => setAudience(a)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
+                  className={`flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
                     ${audience === a ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}`}>
                   <Icon size={15} /> {AUDIENCES[a].label}
                 </button>
@@ -234,14 +234,14 @@ function GatewayModal({ open, onClose }) {
           {/* متصل: إعدادات الإرسال */}
           {status === 'connected' && form && (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <StatCard label="انبعت اليوم" value={`${g.sent_today} / ${g.settings.daily_limit}`} color="green" icon={<Send size={16} className="text-green-400" />} />
                 <StatCard label="ساعات الإرسال" value={<span dir="ltr">{g.settings.work_start}–{g.settings.work_end}</span>} icon={<Timer size={16} className="text-blue-400" />} />
                 <StatCard label="الحالة" value={g.settings.paused ? 'موقوف' : 'شغال'} color={g.settings.paused ? 'red' : 'green'} icon={<CheckCircle2 size={16} />} />
               </div>
               {g.can_manage && (
                 <>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Input label="الحد اليومي" type="number" min={1} value={form.daily_limit} onChange={e => setForm(f => ({ ...f, daily_limit: e.target.value }))} />
                     <Input label="من الساعة" type="time" value={form.work_start} onChange={e => setForm(f => ({ ...f, work_start: e.target.value }))} />
                     <Input label="لحد الساعة" type="time" value={form.work_end} onChange={e => setForm(f => ({ ...f, work_end: e.target.value }))} />

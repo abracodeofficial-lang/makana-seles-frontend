@@ -6,7 +6,7 @@ import { ownersApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
-  Textarea, SearchBox, Avatar, Card, Loading, ErrorMsg, InfoRow, CountBox, BoxSection,
+  Textarea, SearchBox, Avatar, Card, Loading, ErrorMsg, InfoRow, CountBox, FilterPanel, BoxSection,
 } from '../../components/ui';
 import { Plus, Pencil, Trash2, Building2, Users, Star, MessageCircle, X, Download, CheckCircle, ShieldCheck, Compass, Banknote } from 'lucide-react';
 
@@ -52,7 +52,8 @@ export default function OwnersPage() {
   const toggleF = (k, v) => setFilters(f => ({ ...f, [k]: String(f[k]) === String(v) ? undefined : v, page: undefined }));
   const hasDate    = !!(filters.date_from || filters.date_to);
   const FILTER_KEYS = ['sales_employee_owners_id', 'exclusive_status', 'property_type_id', 'direction', 'price_range', 'type'];
-  const hasFilters = FILTER_KEYS.some(k => filters[k]);
+  const activeFilters = FILTER_KEYS.filter(k => filters[k]).length;
+  const hasFilters = activeFilters > 0;
   const clearFilters = () => setFilters(f => ({ date_from: f.date_from, date_to: f.date_to }));
 
   const deleteMut = useMutation({
@@ -123,13 +124,13 @@ export default function OwnersPage() {
         {/* ① الفترة + التصدير */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="w-full sm:w-44">
+            <div className="w-[calc(50%-6px)] sm:w-44">
               <Input label="من تاريخ" type="date" value={filters.date_from || ''} onChange={e => setF('date_from', e.target.value)} />
             </div>
-            <div className="w-full sm:w-44">
+            <div className="w-[calc(50%-6px)] sm:w-44">
               <Input label="إلى تاريخ" type="date" value={filters.date_to || ''} onChange={e => setF('date_to', e.target.value)} />
             </div>
-            <Btn variant="outline" loading={exporting} onClick={handleExport} className="h-[42px]">
+            <Btn variant="outline" loading={exporting} onClick={handleExport} className="h-[42px] w-full sm:w-auto justify-center">
               <Download size={14}/> تصدير إكسل
             </Btn>
             {hasDate && (
@@ -145,7 +146,7 @@ export default function OwnersPage() {
 
         {/* ② العدادات */}
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <StatCard label="العقارات المضافة"        value={stats.properties_added}    icon={<Building2 size={18}/>}   color="blue" />
             <StatCard label="العقارات المقبولة"       value={stats.properties_accepted} icon={<CheckCircle size={18}/>} color="green" />
             <StatCard label="العقارات المضافة رسمياً" value={stats.properties_verified} icon={<ShieldCheck size={18}/>} color="purple" />
@@ -186,15 +187,7 @@ export default function OwnersPage() {
         </div>
 
         {/* ③ الفلاتر */}
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">الفلاتر</p>
-            {hasFilters && (
-              <Btn size="sm" variant="outline" onClick={clearFilters}>
-                <X size={13}/> إلغاء الفلترة
-              </Btn>
-            )}
-          </div>
+        <FilterPanel activeCount={activeFilters} onClear={clearFilters}>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <Select label="موظف الأوبريشن" value={filters.sales_employee_owners_id || ''}
               onChange={e => setF('sales_employee_owners_id', e.target.value)} options={operationEmployees} />
@@ -207,7 +200,7 @@ export default function OwnersPage() {
             <Select label="سعر العقار" value={filters.price_range || ''} onChange={e => setF('price_range', e.target.value)}
               options={byPrice.map(p => ({ value: p.value, label: p.label }))} />
           </div>
-        </div>
+        </FilterPanel>
 
         {/* Table */}
         <Card title="قائمة الملاك">
@@ -330,7 +323,7 @@ function OwnerForm({ open, onClose, editing }) {
           <Btn variant="outline" onClick={onClose}>إلغاء</Btn>
         </>
       }>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input  label="اسم المالك *"        value={form.name}  onChange={e => set('name', e.target.value)} placeholder="الاسم الكامل" />
         <Select label="صفة المالك *"         value={form.type}  onChange={e => set('type', e.target.value)} options={typeOpts} />
         <Input  label="رقم الهاتف *"         value={form.phone}     onChange={e => set('phone',     e.target.value)} placeholder="05xxxxxxxx" />
@@ -346,10 +339,10 @@ function OwnerForm({ open, onClose, editing }) {
         <Select label="حالة التصميم"         value={form.design_status}     onChange={e => set('design_status', e.target.value)}     options={mediaOpts} />
         <Select label="حالة الفيديو"         value={form.video_status}      onChange={e => set('video_status', e.target.value)}      options={mediaOpts} />
         <Select label="حالة النشر"           value={form.publishing_status} onChange={e => set('publishing_status', e.target.value)} options={mediaOpts} />
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <Input label="العنوان" value={form.address || ''} onChange={e => set('address', e.target.value)} />
         </div>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <Textarea label="ملاحظات" value={form.notes || ''} onChange={e => set('notes', e.target.value)} />
         </div>
       </div>
