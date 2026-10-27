@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { leadsApi, visitsApi, employeesApi, lookupApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
-  Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
+  MoneyInput, Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
   Textarea, SearchBox, Avatar, Card, Loading, InfoRow, CountBox, FilterPanel, BoxSection,
 } from '../../components/ui';
 import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X, UserCheck, Home, Download, Compass, Banknote, CircleDot } from 'lucide-react';
@@ -262,7 +262,7 @@ export default function LeadsPage() {
                     <Td className="text-gray-400">{lead.phone}</Td>
                     <Td>{lead.property_type?.name || '—'}</Td>
                     <Td className="font-semibold text-blue-400">
-                      {lead.budget ? `${Number(lead.budget).toLocaleString('ar-SA-u-nu-latn')} ريال` : '—'}
+                      {lead.budget ? `${Number(lead.budget).toLocaleString('en-US')} ريال` : '—'}
                     </Td>
                     <Td><Badge label={lead.classification} color={CLASS_COLOR[lead.classification]}/></Td>
                     <Td>
@@ -441,7 +441,7 @@ function LeadForm({ open, onClose, editing }) {
           options={DIRECTIONS.map(v => ({ value: v, label: v }))} />
         <Select label="موظف الأوبريشن"  value={form.operation_employee_id} onChange={e => set('operation_employee_id', e.target.value)}
           options={operationEmployeeOptions} />
-        <Input  label="الميزانية (ريال)" value={form.budget || ''}     onChange={e => set('budget', e.target.value)} type="number" />
+        <MoneyInput  label="الميزانية (ريال)" value={form.budget || ''}     onChange={e => set('budget', e.target.value)} />
         <Select label="فئة السعر"        value={form.price_category || ''} onChange={e => set('price_category', e.target.value)}
           options={['أقل من 4M','بين 4-10M','أعلى من 10M'].map(v => ({ value: v, label: v }))} />
         <Select label="التصنيف"          value={form.classification}   onChange={e => set('classification', e.target.value)}
@@ -523,7 +523,7 @@ function LeadDetail({ id, onClose }) {
       </div>
       <InfoRow label="صفة المتقدم"     value={l.applicant_type} />
       <InfoRow label="المصدر"          value={l.source} />
-      <InfoRow label="الميزانية"       value={l.budget ? `${Number(l.budget).toLocaleString('ar-SA-u-nu-latn')} ريال` : '—'} valueClass="text-blue-400" />
+      <InfoRow label="الميزانية"       value={l.budget ? `${Number(l.budget).toLocaleString('en-US')} ريال` : '—'} valueClass="text-blue-400" />
       <InfoRow label="هدف الشراء"     value={l.purchase_goal} />
       <InfoRow label="موظف الأوبريشن" value={l.operation_employee?.full_name} />
       <InfoRow label="آخر تحديث"      value={l.update_status} />
@@ -561,7 +561,7 @@ function LeadDetail({ id, onClose }) {
             />
             {l.specialist_stage === 'حجز' && l.agreed_amount && (
               <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-sm text-green-300 font-semibold">
-                المبلغ المتفق عليه: {Number(l.agreed_amount).toLocaleString('ar-SA-u-nu-latn')} ريال
+                المبلغ المتفق عليه: {Number(l.agreed_amount).toLocaleString('en-US')} ريال
               </div>
             )}
           </>
@@ -689,7 +689,7 @@ function AgreedAmountModal({ defaultValue, onClose, onConfirm, loading }) {
         </>
       }>
       <p className="text-xs text-gray-500 mb-3">سيتم إرسال إشعار للمالية بمجرد التأكيد.</p>
-      <Input label="المبلغ (ريال) *" type="number" value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
+      <MoneyInput label="المبلغ (ريال) *" value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
     </Modal>
   );
 }

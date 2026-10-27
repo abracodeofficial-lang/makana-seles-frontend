@@ -1,4 +1,4 @@
-import { Children, cloneElement, isValidElement, useState } from 'react';
+import { Children, cloneElement, isValidElement, useState, useRef, useLayoutEffect } from 'react';
 import { Loader2, AlertCircle, X, ChevronDown } from 'lucide-react';
 
 export function Btn({ children, variant = 'primary', size = 'md', loading, className = '', ...props }) {
@@ -73,6 +73,64 @@ export function Input({ label, error, className = '', ...props }) {
       />
       {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
+  );
+}
+
+// ── المبالغ (سعر/ميزانية/راتب...) ───────────────────────────────
+// 2500000 → "2,500,000" (فاصلة كل 3 خانات). القيمة اللي بتنحفظ بتضل رقم خام.
+export const formatMoney = (n) => {
+  if (n === '' || n === null || n === undefined || isNaN(Number(n))) return '';
+  return Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
+};
+
+const toLatinDigits = (s) => String(s)
+  .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+  .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+  .replace(/[٫]/g, '.');
+
+// "1234567.5" → "1,234,567.5" (وهو عم ينكتب — بيحافظ على النقطة والكسور اللي انكتبت)
+const groupDigits = (raw) => {
+  if (raw === '' || raw === null || raw === undefined) return '';
+  let [int, dec] = String(raw).split('.');
+  if (dec !== undefined && /^0+$/.test(dec) && String(raw).endsWith('.00')) dec = undefined;  // "2500000.00" من السيرفر
+  const grouped = (int || '').replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return dec !== undefined ? `${grouped || '0'}.${dec}` : grouped;
+};
+
+// حقل مبلغ: بيعرض الفواصل وهو عم ينكتب، وبيرجّع onChange بنفس شكل حدث الـinput
+// ({ target: { value: '2500000' } }) — يعني بيركب مكان <Input type="number"> بدون تغيير باقي الكود.
+export function MoneyInput({ value, onChange, className = '', ...props }) {
+  const ref = useRef(null);
+  const caret = useRef(null);   // عدد الخانات قبل المؤشر — لنرجّعه لمكانه بعد التنسيق
+
+  const handleChange = (e) => {
+    const el = e.target;
+    const before = toLatinDigits(el.value.slice(0, el.selectionStart ?? el.value.length));
+    caret.current = before.replace(/[^\d.]/g, '').length;
+
+    let raw = toLatinDigits(el.value).replace(/[^\d.]/g, '');
+    const dot = raw.indexOf('.');
+    if (dot !== -1) raw = raw.slice(0, dot + 1) + raw.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+    onChange?.({ target: { value: raw } });
+  };
+
+  const display = groupDigits(value);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (caret.current === null || !el || document.activeElement !== el) return;
+    let count = 0, pos = 0;
+    while (pos < display.length && count < caret.current) {
+      if (/[\d.]/.test(display[pos])) count++;
+      pos++;
+    }
+    el.setSelectionRange(pos, pos);
+    caret.current = null;
+  }, [display]);
+
+  return (
+    <Input ref={ref} {...props} type="text" inputMode="decimal" dir="ltr" autoComplete="off"
+      className={`text-right ${className}`} value={display} onChange={handleChange} />
   );
 }
 

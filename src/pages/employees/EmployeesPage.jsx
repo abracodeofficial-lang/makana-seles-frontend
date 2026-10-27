@@ -5,7 +5,7 @@ import { employeesApi, lookupApi, permissionGroupsApi } from '../../api/services
 import { PageHeader } from '../../components/layout/Layout';
 import useAuthStore from '../../store/authStore';
 import {
-  Btn, Badge, StatCard, Card, Modal, Input, Select,
+  MoneyInput, Btn, Badge, StatCard, Card, Modal, Input, Select,
   Textarea, SearchBox, Loading, InfoRow, Avatar,
   Table, Tr, Td, ProgressBar,
 } from '../../components/ui';
@@ -26,7 +26,7 @@ const PERM_ACTIONS = [
 
 const STATUS_COLOR = { نشط: 'green', 'إيقاف مؤقت': 'red', إجازة: 'amber' };
 
-const fmt = (n) => n ? Number(n).toLocaleString('ar-SA-u-nu-latn') : '0';
+const fmt = (n) => n ? Number(n).toLocaleString('en-US') : '0';
 
 // ── الصفحة الرئيسية ───────────────────────────────────────────
 export default function EmployeesPage() {
@@ -296,11 +296,11 @@ function EmployeeWizard({ hrLookup, onClose, onSaved }) {
       {/* Step 3 — المعلومات المالية (اختيارية) */}
       {step === 2 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div><Input label="الراتب الأساسي (﷼)"   value={form.basic_salary}        onChange={e => set('basic_salary', e.target.value)} type="number" /><ErrMsg field="basic_salary"/></div>
-          <div><Input label="بدل السكن (﷼)"         value={form.housing_allowance}   onChange={e => set('housing_allowance', e.target.value)} type="number" /><ErrMsg field="housing_allowance"/></div>
-          <div><Input label="بدل المواصلات (﷼)"     value={form.transport_allowance} onChange={e => set('transport_allowance', e.target.value)} type="number" /><ErrMsg field="transport_allowance"/></div>
-          <div><Input label="بدل الاتصالات (﷼)"     value={form.phone_allowance}     onChange={e => set('phone_allowance', e.target.value)} type="number" /><ErrMsg field="phone_allowance"/></div>
-          <div><Input label="بدلات أخرى (﷼)"        value={form.other_allowances}    onChange={e => set('other_allowances', e.target.value)} type="number" /><ErrMsg field="other_allowances"/></div>
+          <div><MoneyInput label="الراتب الأساسي (﷼)"   value={form.basic_salary}        onChange={e => set('basic_salary', e.target.value)} /><ErrMsg field="basic_salary"/></div>
+          <div><MoneyInput label="بدل السكن (﷼)"         value={form.housing_allowance}   onChange={e => set('housing_allowance', e.target.value)} /><ErrMsg field="housing_allowance"/></div>
+          <div><MoneyInput label="بدل المواصلات (﷼)"     value={form.transport_allowance} onChange={e => set('transport_allowance', e.target.value)} /><ErrMsg field="transport_allowance"/></div>
+          <div><MoneyInput label="بدل الاتصالات (﷼)"     value={form.phone_allowance}     onChange={e => set('phone_allowance', e.target.value)} /><ErrMsg field="phone_allowance"/></div>
+          <div><MoneyInput label="بدلات أخرى (﷼)"        value={form.other_allowances}    onChange={e => set('other_allowances', e.target.value)} /><ErrMsg field="other_allowances"/></div>
           <div><Input label="نسبة العمولة (%)"       value={form.commission_rate}     onChange={e => set('commission_rate', e.target.value)} type="number" /><ErrMsg field="commission_rate"/></div>
 
           {/* ملخص الراتب */}
@@ -739,7 +739,7 @@ function SalaryModal({ id, currentSalary, onClose, onSaved }) {
           <p className="text-gray-400">الراتب الحالي</p>
           <p className="text-xl font-black text-gray-100">{fmt(currentSalary)} ﷼</p>
         </div>
-        <Input  label="الراتب الجديد (﷼) *" value={form.new_salary}     onChange={e => set('new_salary', e.target.value)} type="number" />
+        <MoneyInput  label="الراتب الجديد (﷼) *" value={form.new_salary}     onChange={e => set('new_salary', e.target.value)} />
         <Input  label="تاريخ التطبيق *"      value={form.effective_date} onChange={e => set('effective_date', e.target.value)} type="date" />
         <Textarea label="سبب التعديل *"      value={form.reason}         onChange={e => set('reason', e.target.value)} rows={2} />
       </div>

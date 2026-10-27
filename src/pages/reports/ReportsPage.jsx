@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 // ── helpers ───────────────────────────────────────────────────
-const numFmt  = (n) => Number(n || 0).toLocaleString('ar-SA-u-nu-latn');
+const numFmt  = (n) => Number(n || 0).toLocaleString('en-US');
 const dateFmt = (d) => d ? new Date(d).toLocaleDateString('ar-SA-u-nu-latn') : '—';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);

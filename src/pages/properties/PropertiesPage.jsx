@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { propertiesApi, ownersApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
-  Btn, Badge, StatCard, Card, Modal, Input, Select,
+  MoneyInput, Btn, Badge, StatCard, Card, Modal, Input, Select,
   Textarea, Loading, ErrorMsg, InfoRow, Avatar,
   Table, Tr, Td, CountBox, FilterPanel,
 } from '../../components/ui';
@@ -267,10 +267,10 @@ export default function PropertiesPage() {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <p className="text-lg font-black text-blue-400">
-                      {Number(prop.listed_price).toLocaleString('ar-SA-u-nu-latn')} ريال
+                      {Number(prop.listed_price).toLocaleString('en-US')} ريال
                     </p>
                     <p className="text-xs text-gray-500">
-                      {prop.total_area} م² • {Number(prop.price_per_meter).toLocaleString('ar-SA-u-nu-latn')} ريال/م²
+                      {prop.total_area} م² • {Number(prop.price_per_meter).toLocaleString('en-US')} ريال/م²
                     </p>
                   </div>
                 </div>
@@ -685,8 +685,8 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             options={[{value:'1',label:'سكني'},{value:'2',label:'تجاري'},{value:'3',label:'سكني تجاري'},{value:'4',label:'مستودعات'},{value:'5',label:'زراعي'}]} />
           <Select label="الحالة"         value={form.status} onChange={e => set('status', e.target.value)}
             options={['متاح','محجوز','مباع','قيد المراجعة'].map(v => ({ value: v, label: v }))} />
-          <Input error={errors.listed_price} label="السعر المعروض (ريال)" value={form.listed_price} onChange={e => set('listed_price', e.target.value)} type="number" />
-          <Input error={errors.net_price} label="السعر الصافي (ريال)"  value={form.net_price}    onChange={e => set('net_price', e.target.value)}    type="number" />
+          <MoneyInput error={errors.listed_price} label="السعر المعروض (ريال)" value={form.listed_price} onChange={e => set('listed_price', e.target.value)} />
+          <MoneyInput error={errors.net_price} label="السعر الصافي (ريال)"  value={form.net_price}    onChange={e => set('net_price', e.target.value)} />
           <Input error={errors.total_area} label="المساحة (م²)"          value={form.total_area}   onChange={e => set('total_area', e.target.value)}   type="number" />
           <Select label="هل انعمل عقد وساطة؟" clearable={false}
             value={form.has_brokerage_contract ? 'نعم' : 'لا'}
@@ -830,12 +830,12 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             <Select label="حالة الرهن"   value={form.mortgage_status}   onChange={e => set('mortgage_status', e.target.value)}
               options={['مرهون','غير مرهون'].map(v => ({ value: v, label: v }))} />
             {form.mortgage_status === 'مرهون' && (
-              <Input error={errors.mortgage_amount} label="مبلغ الرهن" value={form.mortgage_amount} onChange={e => set('mortgage_amount', e.target.value)} type="number" />
+              <MoneyInput error={errors.mortgage_amount} label="مبلغ الرهن" value={form.mortgage_amount} onChange={e => set('mortgage_amount', e.target.value)} />
             )}
             <Select label="حالة التأجير" value={form.rental_status}    onChange={e => set('rental_status', e.target.value)}
               options={['مؤجر','غير مؤجر','جزئي'].map(v => ({ value: v, label: v }))} />
             {form.rental_status !== 'غير مؤجر' && (
-              <Input error={errors.annual_income} label="الإيراد السنوي" value={form.annual_income} onChange={e => set('annual_income', e.target.value)} type="number" />
+              <MoneyInput error={errors.annual_income} label="الإيراد السنوي" value={form.annual_income} onChange={e => set('annual_income', e.target.value)} />
             )}
           </div>
         </div>
@@ -891,7 +891,7 @@ const SectionTitle = ({ children }) => (
 );
 
 const yn = (v) => v ? 'نعم' : 'لا';
-const fmt = (n) => n ? Number(n).toLocaleString('ar-SA-u-nu-latn') : '—';
+const fmt = (n) => n ? Number(n).toLocaleString('en-US') : '—';
 
 function PropertyDetail({ id, onClose }) {
   const { data, isLoading } = useQuery({
