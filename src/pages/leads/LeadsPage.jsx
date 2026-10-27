@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { leadsApi, visitsApi, employeesApi, lookupApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
-  MoneyInput, Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
+  PhoneText, MoneyInput, Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
   Textarea, SearchBox, Avatar, Card, Loading, InfoRow, CountBox, FilterPanel, BoxSection,
 } from '../../components/ui';
 import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X, UserCheck, Home, Download, Compass, Banknote, CircleDot } from 'lucide-react';
@@ -259,7 +259,7 @@ export default function LeadsPage() {
                         <p className="font-semibold text-gray-100 text-xs">{lead.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
                       </div>
                     </Td>
-                    <Td className="text-gray-400">{lead.phone}</Td>
+                    <Td className="text-gray-400"><PhoneText value={lead.phone} /></Td>
                     <Td>{lead.property_type?.name || '—'}</Td>
                     <Td className="font-semibold text-blue-400">
                       {lead.budget ? `${Number(lead.budget).toLocaleString('en-US')} ريال` : '—'}
@@ -429,7 +429,7 @@ function LeadForm({ open, onClose, editing }) {
       }>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input  label="الاسم الكامل"  value={form.name}  onChange={e => set('name', e.target.value)} />
-        <Input  label="رقم التواصل *"   value={form.phone} onChange={e => set('phone', e.target.value)} />
+        <Input dir="ltr"  label="رقم التواصل *"   value={form.phone} onChange={e => set('phone', e.target.value)} />
         <Select label="صفة المتقدم"     value={form.applicant_type}    onChange={e => set('applicant_type', e.target.value)}
           options={['مهتم','مشتري','مستأجر','وسيط','وكيل','مطور'].map(v => ({ value: v, label: v }))} />
         <Select label="مصدر الطلب"      value={form.source}            onChange={e => set('source', e.target.value)}
@@ -513,7 +513,7 @@ function LeadDetail({ id, onClose }) {
         <Avatar name={l.name} size="lg" />
         <div>
           <p className="text-lg font-bold text-gray-100">{l.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
-          <p className="text-xs text-gray-500 font-mono">{l.lead_code} · {l.phone}</p>
+          <p className="text-xs text-gray-500 font-mono">{l.lead_code} · <PhoneText value={l.phone} /></p>
           <div className="flex gap-2 mt-1">
             <Badge label={l.classification} color={CLASS_COLOR[l.classification]}/>
             <Badge label={l.request_status} color={STATUS_COLOR[l.request_status]}/>

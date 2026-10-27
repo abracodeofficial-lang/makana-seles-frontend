@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { ownersApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
-  Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
+  PhoneText, Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
   Textarea, SearchBox, Avatar, Card, Loading, ErrorMsg, InfoRow, CountBox, FilterPanel, BoxSection,
 } from '../../components/ui';
 import { Plus, Pencil, Trash2, Building2, Users, Star, MessageCircle, X, Download, CheckCircle, ShieldCheck, Compass, Banknote } from 'lucide-react';
@@ -218,7 +218,7 @@ export default function OwnersPage() {
                   </div>
                 </Td>
                 <Td><Badge label={owner.type} color={TYPE_COLOR[owner.type] || 'gray'} /></Td>
-                <Td className="text-gray-400">{owner.phone}</Td>
+                <Td className="text-gray-400"><PhoneText value={owner.phone} /></Td>
                 <Td>
                   <button onClick={e => { e.stopPropagation(); setShowProps(owner.id); }}
                     className="text-blue-400 hover:text-blue-300 text-xs font-semibold flex items-center gap-1">
@@ -326,8 +326,8 @@ function OwnerForm({ open, onClose, editing }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input  label="اسم المالك"        value={form.name}  onChange={e => set('name', e.target.value)} placeholder="الاسم الكامل" />
         <Select label="صفة المالك *"         value={form.type}  onChange={e => set('type', e.target.value)} options={typeOpts} />
-        <Input  label="رقم الهاتف *"         value={form.phone}     onChange={e => set('phone',     e.target.value)} placeholder="05xxxxxxxx" />
-        <Input  label="رقم الواتساب"         value={form.whatsapp || ''} onChange={e => set('whatsapp', e.target.value)} placeholder="05xxxxxxxx (إن اختلف)" />
+        <Input dir="ltr"  label="رقم الهاتف *"         value={form.phone}     onChange={e => set('phone',     e.target.value)} placeholder="05xxxxxxxx" />
+        <Input dir="ltr"  label="رقم الواتساب"         value={form.whatsapp || ''} onChange={e => set('whatsapp', e.target.value)} placeholder="05xxxxxxxx (إن اختلف)" />
         <Input  label="البريد الإلكتروني"    value={form.email || ''}    onChange={e => set('email',    e.target.value)} type="email" />
         <Select label="حالة الحصري"          value={form.exclusive_status}  onChange={e => set('exclusive_status', e.target.value)}  options={statusOpts} />
         <Select label="حالة الوساطة"         value={form.brokerage_status}  onChange={e => set('brokerage_status', e.target.value)}  options={statusOpts} />
@@ -370,7 +370,7 @@ function OwnerDetail({ id, onClose }) {
           <Badge label={o.type} color={TYPE_COLOR[o.type] || 'gray'} />
         </div>
       </div>
-      <InfoRow label="الهاتف"          value={o.phone} />
+      <InfoRow label="الهاتف"          value={<PhoneText value={o.phone} />} />
       {o.whatsapp && (
         <div className="flex items-center justify-between py-1.5 border-b border-gray-800 text-xs">
           <span className="text-gray-500">واتساب</span>
@@ -380,7 +380,7 @@ function OwnerDetail({ id, onClose }) {
             rel="noopener noreferrer"
             className="flex items-center gap-1 bg-green-600 hover:bg-green-500 text-white font-bold px-2 py-1 rounded-lg transition-colors"
           >
-            <MessageCircle size={11}/> {o.whatsapp}
+            <MessageCircle size={11}/> <PhoneText value={o.whatsapp} />
           </a>
         </div>
       )}

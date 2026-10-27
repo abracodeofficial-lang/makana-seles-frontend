@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { employeesApi, authApi } from '../../api/services';
 import client from '../../api/client';
 import useAuthStore from '../../store/authStore';
-import { Badge, Modal, Input, Btn, Loading, Avatar, InfoRow } from '../../components/ui';
+import { PhoneText, Badge, Modal, Input, Btn, Loading, Avatar, InfoRow } from '../../components/ui';
 import {
   User, FileText, DollarSign, Palmtree,
   Download, Eye, Calendar, Building2, CreditCard,
@@ -229,7 +229,7 @@ function TabInfo({ emp }) {
           <User size={11}/> البيانات الشخصية
         </p>
         <InfoRow label="رقم الهوية"         value={emp.national_id}    />
-        <InfoRow label="رقم الهاتف"         value={emp.phone}          />
+        <InfoRow label="رقم الهاتف"         value={<PhoneText value={emp.phone} />}          />
         <InfoRow label="البريد الإلكتروني"  value={emp.email}          />
         <InfoRow label="العنوان"            value={emp.address}        />
         <InfoRow label="الحالة الاجتماعية"  value={emp.marital_status} />

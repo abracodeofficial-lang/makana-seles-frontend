@@ -5,7 +5,7 @@ import { employeesApi, lookupApi, permissionGroupsApi } from '../../api/services
 import { PageHeader } from '../../components/layout/Layout';
 import useAuthStore from '../../store/authStore';
 import {
-  MoneyInput, Btn, Badge, StatCard, Card, Modal, Input, Select,
+  PhoneText, MoneyInput, Btn, Badge, StatCard, Card, Modal, Input, Select,
   Textarea, SearchBox, Loading, InfoRow, Avatar,
   Table, Tr, Td, ProgressBar,
 } from '../../components/ui';
@@ -125,7 +125,7 @@ export default function EmployeesPage() {
                       </div>
                     </div>
                   </Td>
-                  <Td className="text-gray-400">{emp.phone}</Td>
+                  <Td className="text-gray-400"><PhoneText value={emp.phone} /></Td>
                   <Td>{emp.department?.name || '—'}</Td>
                   <Td className="text-gray-300">{emp.job_title}</Td>
                   <Td className="font-semibold text-blue-400">{fmt(emp.basic_salary)} ﷼</Td>
@@ -267,7 +267,7 @@ function EmployeeWizard({ hrLookup, onClose, onSaved }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div><Input label="الاسم الكامل *"       value={form.full_name}      onChange={e => set('full_name', e.target.value)} /><ErrMsg field="full_name"/></div>
           <div><Input label="رقم الهوية *"         value={form.national_id}    onChange={e => set('national_id', e.target.value)} /><ErrMsg field="national_id"/></div>
-          <div><Input label="رقم الهاتف *"         value={form.phone}          onChange={e => set('phone', e.target.value)} /><ErrMsg field="phone"/></div>
+          <div><Input dir="ltr" label="رقم الهاتف *"         value={form.phone}          onChange={e => set('phone', e.target.value)} /><ErrMsg field="phone"/></div>
           <div><Input label="البريد الإلكتروني *"  value={form.email}          onChange={e => set('email', e.target.value)} type="email" /><ErrMsg field="email"/></div>
           <div><Input label="كلمة المرور *"        value={form.password}       onChange={e => set('password', e.target.value)} type="password" /><ErrMsg field="password"/></div>
           <div>
@@ -470,7 +470,7 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
                 <Badge label={emp.status} color={STATUS_COLOR[emp.status] || 'gray'} />
               </div>
               <p className="text-sm text-gray-400">{emp.job_title} — {emp.department?.name}</p>
-              <p className="text-xs text-gray-500 font-mono">{emp.employee_number} · {emp.phone}</p>
+              <p className="text-xs text-gray-500 font-mono">{emp.employee_number} · <PhoneText value={emp.phone} /></p>
             </div>
             <div className="text-left">
               <p className="text-xs text-gray-500">إجمالي الراتب</p>
@@ -495,7 +495,7 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
             editMode ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="الاسم الكامل"       value={editForm.full_name || ''}   onChange={e => set('full_name', e.target.value)} />
-                <Input label="رقم الهاتف"          value={editForm.phone || ''}       onChange={e => set('phone', e.target.value)} />
+                <Input dir="ltr" label="رقم الهاتف"          value={editForm.phone || ''}       onChange={e => set('phone', e.target.value)} />
                 <Input label="البريد الإلكتروني"   value={editForm.email || ''}       onChange={e => set('email', e.target.value)} type="email" />
                 <Select label="الحالة الاجتماعية *" value={editForm.marital_status || ''} onChange={e => set('marital_status', e.target.value)}
                   options={[{ value: '', label: 'اختر...' }, ...['أعزب','متزوج','مطلق','أرمل'].map(v => ({ value: v, label: v }))]} />
@@ -513,7 +513,7 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
                   <p className="text-xs text-gray-400 uppercase font-semibold mb-3">البيانات الشخصية</p>
                   <InfoRow label="الاسم"             value={emp.full_name} />
                   <InfoRow label="رقم الهوية"        value={emp.national_id} />
-                  <InfoRow label="الهاتف"            value={emp.phone} />
+                  <InfoRow label="الهاتف"            value={<PhoneText value={emp.phone} />} />
                   <InfoRow label="البريد"            value={emp.email} />
                   <InfoRow label="الحالة الاجتماعية" value={emp.marital_status} />
                   <InfoRow label="العنوان"           value={emp.address} />

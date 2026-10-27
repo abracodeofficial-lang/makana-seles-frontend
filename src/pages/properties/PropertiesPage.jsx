@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { propertiesApi, ownersApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
-  MoneyInput, Btn, Badge, StatCard, Card, Modal, Input, Select,
+  PhoneText, MoneyInput, Btn, Badge, StatCard, Card, Modal, Input, Select,
   Textarea, Loading, ErrorMsg, InfoRow, Avatar,
   Table, Tr, Td, CountBox, FilterPanel,
 } from '../../components/ui';
@@ -299,12 +299,12 @@ export default function PropertiesPage() {
                   <div className="space-y-0.5">
                     {prop.owner?.phone && (
                       <p className="text-xs text-gray-500 font-mono flex items-center gap-1">
-                        <Phone size={10}/> {prop.owner.phone}
+                        <Phone size={10}/> <PhoneText value={prop.owner.phone} />
                       </p>
                     )}
                     {prop.owner?.whatsapp && prop.owner.whatsapp !== prop.owner.phone && (
                       <p className="text-xs text-green-400 font-mono flex items-center gap-1">
-                        <MessageCircle size={10}/> {prop.owner.whatsapp}
+                        <MessageCircle size={10}/> <PhoneText value={prop.owner.whatsapp} />
                       </p>
                     )}
                   </div>
@@ -795,7 +795,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
                     <Avatar name={owner.name} size="sm" />
                     <div>
                       <p className="text-sm font-semibold text-gray-100">{owner.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
-                      <p className="text-xs text-gray-500">{owner.owner_code} · {owner.phone}</p>
+                      <p className="text-xs text-gray-500">{owner.owner_code} · <PhoneText value={owner.phone} /></p>
                     </div>
                     <Badge label={owner.type} color="blue" />
                   </div>
@@ -811,7 +811,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
                   <Avatar name={selectedOwner.name} size="md" />
                   <div>
                     <p className="font-bold text-gray-100">{selectedOwner.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
-                    <p className="text-xs text-gray-400">{selectedOwner.owner_code} · {selectedOwner.phone}</p>
+                    <p className="text-xs text-gray-400">{selectedOwner.owner_code} · <PhoneText value={selectedOwner.phone} /></p>
                   </div>
                 </div>
                 <Btn size="sm" variant="ghost" onClick={() => { setSelectedOwner(null); setOwnerSearch(''); set('owner_id', ''); }}>
@@ -1014,11 +1014,11 @@ function PropertyDetail({ id, onClose }) {
                   <p className="font-bold text-gray-100 text-sm">{p.owner?.name}</p>
                   <p className="text-xs text-gray-500 font-mono">{p.owner?.owner_code}</p>
                   <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                    <Phone size={10}/> {p.owner?.phone}
+                    <Phone size={10}/> <PhoneText value={p.owner?.phone} />
                   </p>
                   {p.owner?.whatsapp && p.owner.whatsapp !== p.owner.phone && (
                     <p className="text-xs text-green-400 flex items-center gap-1">
-                      <MessageCircle size={10}/> {p.owner.whatsapp}
+                      <MessageCircle size={10}/> <PhoneText value={p.owner.whatsapp} />
                     </p>
                   )}
                 </div>
@@ -1056,7 +1056,7 @@ function PropertyDetail({ id, onClose }) {
             <>
               <SectionTitle>الموظف المسؤول</SectionTitle>
               <InfoRow label="الاسم"  value={p.assignedEmployee.full_name} />
-              <InfoRow label="الهاتف" value={p.assignedEmployee.phone} />
+              <InfoRow label="الهاتف" value={<PhoneText value={p.assignedEmployee.phone} />} />
             </>
           )}
 

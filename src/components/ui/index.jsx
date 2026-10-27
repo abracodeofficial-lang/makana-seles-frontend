@@ -134,6 +134,12 @@ export function MoneyInput({ value, onChange, className = '', ...props }) {
   );
 }
 
+// رقم جوال: لازم يتعرض LTR — بصفحة RTL الأرقام المفصولة بمسافات (050 752 2442) بتنقلب لـ 2442 752 050
+export function PhoneText({ value, className = '' }) {
+  if (!value) return null;
+  return <bdi dir="ltr" className={`inline-block whitespace-nowrap ${className}`}>{value}</bdi>;
+}
+
 export function ClearableSelect({ wrapperClassName = '', value, onChange, className = '', children, ...props }) {
   return (
     <div className={`relative ${wrapperClassName}`}>
