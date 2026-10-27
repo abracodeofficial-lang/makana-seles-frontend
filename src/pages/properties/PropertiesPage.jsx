@@ -391,6 +391,60 @@ const FORM_DEFAULTS = {
 
 const TAB_KEYS = ['basic', 'location', 'owner', 'details', 'media'];
 
+// ── فحص فورم العقار تاب تاب (نفس قواعد السيرفر) ─────────────────
+const isEmpty   = (v) => v === '' || v === null || v === undefined;
+const isUrl     = (v) => { try { return /^https?:$/.test(new URL(v).protocol); } catch { return false; } };
+const negative  = (v) => !isEmpty(v) && Number(v) < 0;
+const badInt    = (v) => !isEmpty(v) && (!Number.isInteger(Number(v)) || Number(v) < 0);
+const tooLong   = (v, n) => String(v ?? '').length > n;
+const outOf     = (v, min, max) => !isEmpty(v) && (isNaN(Number(v)) || Number(v) < min || Number(v) > max);
+
+const TAB_RULES = {
+  basic: (f) => ({
+    name:             !String(f.name || '').trim() && 'اسم العقار مطلوب',
+    property_type_id: !f.property_type_id && 'اختار نوع العقار',
+    listed_price:     negative(f.listed_price) && 'السعر ما بيصير سالب',
+    net_price:        negative(f.net_price) && 'السعر ما بيصير سالب',
+    total_area:       negative(f.total_area) && 'المساحة ما بتصير سالبة',
+    license_number:   tooLong(f.license_number, 50) && 'رقم الترخيص طويل (50 حرف كحد أقصى)',
+  }),
+  location: (f) => ({
+    plan_number:  tooLong(f.plan_number, 50) && 'رقم المخطط طويل (50 حرف كحد أقصى)',
+    plot_number:  tooLong(f.plot_number, 50) && 'رقم القطعة طويل (50 حرف كحد أقصى)',
+    street_width: negative(f.street_width) && 'عرض الشارع ما بيصير سالب',
+    map_url:      !isEmpty(f.map_url) && !isUrl(f.map_url) && 'الرابط لازم يكون كامل ويبلّش بـ https://',
+    latitude:     outOf(f.latitude, -90, 90) && 'خط الطول لازم يكون بين -90 و 90',
+    longitude:    outOf(f.longitude, -180, 180) && 'خط العرض لازم يكون بين -180 و 180',
+  }),
+  owner: (f) => ({
+    owner_id:        !f.owner_id && 'اختار مالك العقار: اكتب اسمه واضغط عليه من القائمة، أو أضفه كمالك جديد',
+    mortgage_amount: f.mortgage_status === 'مرهون' && negative(f.mortgage_amount) && 'مبلغ الرهن ما بيصير سالب',
+    annual_income:   negative(f.annual_income) && 'الإيراد ما بيصير سالب',
+  }),
+  details: (f) => ({
+    rooms_count:     badInt(f.rooms_count) && 'لازم رقم صحيح (0 أو أكتر)',
+    bathrooms_count: badInt(f.bathrooms_count) && 'لازم رقم صحيح (0 أو أكتر)',
+    halls_count:     badInt(f.halls_count) && 'لازم رقم صحيح (0 أو أكتر)',
+    floors_count:    badInt(f.floors_count) && 'لازم رقم صحيح (0 أو أكتر)',
+    building_age:    badInt(f.building_age) && 'لازم رقم صحيح (0 أو أكتر)',
+  }),
+  media: (f) => ({
+    photos_url:      !isEmpty(f.photos_url) && !isUrl(f.photos_url) && 'الرابط لازم يكون كامل ويبلّش بـ https://',
+    video_url:       !isEmpty(f.video_url) && !isUrl(f.video_url) && 'الرابط لازم يكون كامل ويبلّش بـ https://',
+    commission_rate: outOf(f.commission_rate, 0, 100) && 'العمولة لازم تكون بين 0 و 100',
+  }),
+};
+
+// أي حقل بأي تاب (لأخطاء السيرفر)
+const FIELD_TAB = Object.fromEntries(
+  Object.entries(TAB_RULES).flatMap(([tab, rule]) => Object.keys(rule({})).map(k => [k, tab]))
+);
+
+const tabErrors = (tab, form) =>
+  Object.fromEntries(Object.entries(TAB_RULES[tab]?.(form) || {}).filter(([, msg]) => msg));
+
+
+
 function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, onClearDraft }) {
   const qc = useQueryClient();
   const [tab, setTab]               = useState('basic');
@@ -405,6 +459,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
     if (open && !wasOpen.current) {
       setTab('basic');
       setTriedSave(false);
+      setErrors({});
       setNewOwner(null);
       if (editing) {
         setForm(editing);
@@ -425,7 +480,38 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
     wasOpen.current = open;
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => {
+    setForm(f => ({ ...f, [k]: v }));
+    setErrors(e => (e[k] ? { ...e, [k]: undefined } : e));
+  };
+  const [errors, setErrors] = useState({});
+
+  // بيفحص تاب (أو مجموعة تابات) وبيعرض الأخطاء تحت الحقول. بيرجّع أول تاب فيه غلط (أو null)
+  const validateTabs = (tabs) => {
+    let firstBad = null, firstMsg = null;
+    const next = { ...errors };
+    for (const t of tabs) {
+      for (const k of Object.keys(TAB_RULES[t]({}))) delete next[k];
+      const errs = tabErrors(t, form);
+      Object.assign(next, errs);
+      if (!firstBad && Object.keys(errs).length) { firstBad = t; firstMsg = Object.values(errs)[0]; }
+    }
+    setErrors(next);
+    if (firstBad) {
+      setTab(firstBad);
+      toast.error(firstBad === 'owner' && !form.owner_id && ownerSearch
+        ? 'كتبت اسم المالك بس ما اخترته — اضغط على اسمه من القائمة، أو أضفه كمالك جديد'
+        : firstMsg, { id: 'property-form-validation', duration: 4000 });
+    }
+    return firstBad;
+  };
+
+  // التالي / الضغط على تاب لقدّام: لازم التابات اللي قبله تكون سليمة. لورا مسموح دايماً
+  const goToTab = (target) => {
+    const from = TAB_KEYS.indexOf(tab), to = TAB_KEYS.indexOf(target);
+    if (to <= from) { setTab(target); return; }
+    if (!validateTabs(TAB_KEYS.slice(from, to))) setTab(target);
+  };
 
   // إغلاق مع حفظ المسودة
   const handleClose = () => {
@@ -495,25 +581,9 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
     .map(t => ({ value: String(t.id), label: t.name }));
 
   const handleSave = async () => {
-    // validation مع توجيه للتاب الصح
-    if (!form.name) {
-      toast.error('اسم العقار مطلوب');
-      setTab('basic');
-      return;
-    }
-    if (!form.property_type_id) {
-      toast.error('نوع العقار مطلوب');
-      setTab('basic');
-      return;
-    }
-    if (!form.owner_id) {
-      setTriedSave(true);
-      toast.error(ownerSearch
-        ? 'كتبت اسم المالك بس ما اخترته — اضغط على اسمه من القائمة، أو أضفه كمالك جديد'
-        : 'لازم تختار مالك العقار من تاب "المالك"', { duration: 5000 });
-      setTab('owner');
-      return;
-    }
+    // فحص كل التابات، وبيوقف على أول تاب فيه غلط
+    setTriedSave(true);
+    if (validateTabs(TAB_KEYS)) return;
     setLoading(true);
     try {
       if (editing) await propertiesApi.update(editing.id, form);
@@ -523,8 +593,16 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       onClearDraft?.();
       onClose();
     } catch (err) {
-      const errors = err.response?.data?.errors;
-      if (errors) Object.values(errors).flat().forEach(e => toast.error(e));
+      const serverErrors = err.response?.data?.errors;
+      if (serverErrors) {
+        const mapped = Object.fromEntries(Object.entries(serverErrors).map(([k, v]) => [k, [].concat(v)[0]]));
+        setErrors(mapped);
+        const firstField = Object.keys(mapped).find(k => FIELD_TAB[k]) || Object.keys(mapped)[0];
+        if (FIELD_TAB[firstField]) setTab(FIELD_TAB[firstField]);
+        toast.error(mapped[firstField], { id: 'property-form-validation' });
+      } else {
+        toast.error(err.response?.data?.message || 'تعذّر حفظ العقار، حاول مرة تانية');
+      }
     } finally { setLoading(false); }
   };
 
@@ -541,7 +619,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
 
   // مؤشر اكتمال التابات — فقط الحقول الإلزامية
   const tabComplete = {
-    basic:    !!form.name,
+    basic:    !!form.name && !!form.property_type_id,
     location: true,
     owner:    !!form.owner_id,
     details:  true,
@@ -562,7 +640,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
               </Btn>
             )}
             {tabIdx < TAB_KEYS.length - 1 && (
-              <Btn variant="outline" className="flex-1 sm:flex-none justify-center" onClick={() => setTab(TAB_KEYS[tabIdx + 1])}>
+              <Btn variant="outline" className="flex-1 sm:flex-none justify-center" onClick={() => goToTab(TAB_KEYS[tabIdx + 1])}>
                 التالي <ChevronLeft size={14}/>
               </Btn>
             )}
@@ -580,16 +658,16 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-800 rounded-lg p-1 mb-5 overflow-x-auto">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <button key={t.key} onClick={() => goToTab(t.key)}
             className={`flex-1 whitespace-nowrap px-2.5 py-2 rounded-md text-xs font-semibold transition-all relative ${
               tab === t.key ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200'
             }`}>
             {t.label}
             {/* نقطة خضراء إذا التاب مكتمل، وحمرا إذا ناقص بعد محاولة الحفظ */}
-            {tabComplete[t.key] ? (
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-400" />
-            ) : triedSave && (
+            {Object.keys(TAB_RULES[t.key]({})).some(k => errors[k]) ? (
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            ) : tabComplete[t.key] && (
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-400" />
             )}
           </button>
         ))}
@@ -598,8 +676,8 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       {/* Tab: المعلومات الأساسية */}
       {tab === 'basic' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="اسم العقار *"    value={form.name}        onChange={e => set('name', e.target.value)} />
-          <Select label="نوع العقار *"   value={form.property_type_id ? String(form.property_type_id) : ''} onChange={e => set('property_type_id', e.target.value)}
+          <Input error={errors.name} label="اسم العقار *"    value={form.name}        onChange={e => set('name', e.target.value)} />
+          <Select error={errors.property_type_id} label="نوع العقار *"   value={form.property_type_id ? String(form.property_type_id) : ''} onChange={e => set('property_type_id', e.target.value)}
             options={propertyTypeOptions} />
           <Select label="نوع التسويق"    value={form.marketing_type_id} onChange={e => set('marketing_type_id', e.target.value)}
             options={[{value:'1',label:'ملاك أفراد'},{value:'2',label:'مزادات'},{value:'3',label:'مشاريع على الخارطة'},{value:'4',label:'مشاريع جاهزة'}]} />
@@ -607,14 +685,14 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             options={[{value:'1',label:'سكني'},{value:'2',label:'تجاري'},{value:'3',label:'سكني تجاري'},{value:'4',label:'مستودعات'},{value:'5',label:'زراعي'}]} />
           <Select label="الحالة"         value={form.status} onChange={e => set('status', e.target.value)}
             options={['متاح','محجوز','مباع','قيد المراجعة'].map(v => ({ value: v, label: v }))} />
-          <Input label="السعر المعروض (ريال)" value={form.listed_price} onChange={e => set('listed_price', e.target.value)} type="number" />
-          <Input label="السعر الصافي (ريال)"  value={form.net_price}    onChange={e => set('net_price', e.target.value)}    type="number" />
-          <Input label="المساحة (م²)"          value={form.total_area}   onChange={e => set('total_area', e.target.value)}   type="number" />
+          <Input error={errors.listed_price} label="السعر المعروض (ريال)" value={form.listed_price} onChange={e => set('listed_price', e.target.value)} type="number" />
+          <Input error={errors.net_price} label="السعر الصافي (ريال)"  value={form.net_price}    onChange={e => set('net_price', e.target.value)}    type="number" />
+          <Input error={errors.total_area} label="المساحة (م²)"          value={form.total_area}   onChange={e => set('total_area', e.target.value)}   type="number" />
           <Select label="هل انعمل عقد وساطة؟" clearable={false}
             value={form.has_brokerage_contract ? 'نعم' : 'لا'}
             onChange={e => set('has_brokerage_contract', e.target.value === 'نعم')}
             options={[{ value: 'نعم', label: 'نعم' }, { value: 'لا', label: 'لا' }]} />
-          <Input label="رقم الترخيص" value={form.license_number || ''} onChange={e => set('license_number', e.target.value)} dir="ltr" />
+          <Input error={errors.license_number} label="رقم الترخيص" value={form.license_number || ''} onChange={e => set('license_number', e.target.value)} dir="ltr" />
         </div>
       )}
 
@@ -628,9 +706,9 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             onChange={e => set('neighborhood_id', e.target.value)}
             options={(neighborhoodsData || []).map(n => ({ value: String(n.id), label: n.name }))}
             disabled={!form.city_id} />
-          <Input label="رقم المخطط" value={form.plan_number || ''} onChange={e => set('plan_number', e.target.value)} dir="ltr" />
-          <Input label="رقم القطعة" value={form.plot_number || ''} onChange={e => set('plot_number', e.target.value)} dir="ltr" />
-          <Input label="عرض الشارع (متر)" value={form.street_width || ''} onChange={e => set('street_width', e.target.value)}
+          <Input error={errors.plan_number} label="رقم المخطط" value={form.plan_number || ''} onChange={e => set('plan_number', e.target.value)} dir="ltr" />
+          <Input error={errors.plot_number} label="رقم القطعة" value={form.plot_number || ''} onChange={e => set('plot_number', e.target.value)} dir="ltr" />
+          <Input error={errors.street_width} label="عرض الشارع (متر)" value={form.street_width || ''} onChange={e => set('street_width', e.target.value)}
             type="number" min="0" step="0.5" placeholder="مثلاً 20" />
           <Select label="الاتجاه" value={form.direction || ''} onChange={e => set('direction', e.target.value)}
             options={['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية'].map(v => ({ value: v, label: v }))} />
@@ -652,10 +730,10 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             </div>
           </div>
           <div className="sm:col-span-2">
-            <Input label="رابط الموقع (Google Maps)" value={form.map_url || ''} onChange={e => set('map_url', e.target.value)} />
+            <Input error={errors.map_url} label="رابط الموقع (Google Maps)" value={form.map_url || ''} onChange={e => set('map_url', e.target.value)} />
           </div>
-          <Input label="خط الطول" value={form.latitude  || ''} onChange={e => set('latitude',  e.target.value)} type="number" />
-          <Input label="خط العرض" value={form.longitude || ''} onChange={e => set('longitude', e.target.value)} type="number" />
+          <Input error={errors.latitude} label="خط الطول" value={form.latitude  || ''} onChange={e => set('latitude',  e.target.value)} type="number" />
+          <Input error={errors.longitude} label="خط العرض" value={form.longitude || ''} onChange={e => set('longitude', e.target.value)} type="number" />
           <div className="sm:col-span-2">
             <Textarea label="المواقع القريبة" value={form.nearby_places || ''} onChange={e => set('nearby_places', e.target.value)} placeholder="مدارس، مساجد، أسواق..." />
           </div>
@@ -674,9 +752,10 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
                 placeholder="اكتب اسم المالك أو رقمه أو الكود…"
                 autoFocus
                 className={`w-full bg-gray-800 border rounded-lg px-3 py-2.5 text-sm text-gray-100 outline-none focus:border-blue-500
-                  ${triedSave && !form.owner_id ? 'border-red-500' : 'border-gray-700'}`}
+                  ${errors.owner_id ? 'border-red-500' : 'border-gray-700'}`}
               />
             )}
+            {errors.owner_id && <p className="text-xs text-red-400">{errors.owner_id}</p>}
             {!selectedOwner && (
               <p className="text-xs text-gray-500">
                 {ownerSearch.length < 2
@@ -751,12 +830,12 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             <Select label="حالة الرهن"   value={form.mortgage_status}   onChange={e => set('mortgage_status', e.target.value)}
               options={['مرهون','غير مرهون'].map(v => ({ value: v, label: v }))} />
             {form.mortgage_status === 'مرهون' && (
-              <Input label="مبلغ الرهن" value={form.mortgage_amount} onChange={e => set('mortgage_amount', e.target.value)} type="number" />
+              <Input error={errors.mortgage_amount} label="مبلغ الرهن" value={form.mortgage_amount} onChange={e => set('mortgage_amount', e.target.value)} type="number" />
             )}
             <Select label="حالة التأجير" value={form.rental_status}    onChange={e => set('rental_status', e.target.value)}
               options={['مؤجر','غير مؤجر','جزئي'].map(v => ({ value: v, label: v }))} />
             {form.rental_status !== 'غير مؤجر' && (
-              <Input label="الإيراد السنوي" value={form.annual_income} onChange={e => set('annual_income', e.target.value)} type="number" />
+              <Input error={errors.annual_income} label="الإيراد السنوي" value={form.annual_income} onChange={e => set('annual_income', e.target.value)} type="number" />
             )}
           </div>
         </div>
@@ -765,11 +844,11 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       {/* Tab: التفاصيل */}
       {tab === 'details' && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <Input label="عدد الغرف"      value={form.rooms_count}     onChange={e => set('rooms_count',     e.target.value)} type="number" />
-          <Input label="عدد الحمامات"   value={form.bathrooms_count} onChange={e => set('bathrooms_count', e.target.value)} type="number" />
-          <Input label="عدد الصالات"    value={form.halls_count}     onChange={e => set('halls_count',     e.target.value)} type="number" />
-          <Input label="عدد الأدوار"    value={form.floors_count}    onChange={e => set('floors_count',    e.target.value)} type="number" />
-          <Input label="عمر العقار (سنة)" value={form.building_age}  onChange={e => set('building_age',    e.target.value)} type="number" />
+          <Input error={errors.rooms_count} label="عدد الغرف"      value={form.rooms_count}     onChange={e => set('rooms_count',     e.target.value)} type="number" />
+          <Input error={errors.bathrooms_count} label="عدد الحمامات"   value={form.bathrooms_count} onChange={e => set('bathrooms_count', e.target.value)} type="number" />
+          <Input error={errors.halls_count} label="عدد الصالات"    value={form.halls_count}     onChange={e => set('halls_count',     e.target.value)} type="number" />
+          <Input error={errors.floors_count} label="عدد الأدوار"    value={form.floors_count}    onChange={e => set('floors_count',    e.target.value)} type="number" />
+          <Input error={errors.building_age} label="عمر العقار (سنة)" value={form.building_age}  onChange={e => set('building_age',    e.target.value)} type="number" />
           <Select label="موقف سيارات"   value={form.parking}         onChange={e => set('parking', e.target.value)}
             options={['متوفر','غير متوفر'].map(v => ({ value: v, label: v }))} />
           <Select label="مفروش"         value={form.is_furnished ? 'نعم' : 'لا'} onChange={e => set('is_furnished', e.target.value === 'نعم')}
@@ -791,9 +870,9 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             <Select label="حالة التصميم"  value={form.design_status}    onChange={e => set('design_status',    e.target.value)} options={mediaOpts} />
             <Select label="حالة الفيديو"  value={form.video_status}     onChange={e => set('video_status',     e.target.value)} options={mediaOpts} />
             <Select label="حالة النشر"    value={form.marketing_status} onChange={e => set('marketing_status', e.target.value)} options={mediaOpts} />
-            <Input  label="رابط الصور"    value={form.photos_url || ''} onChange={e => set('photos_url', e.target.value)} placeholder="https://..." />
-            <Input  label="رابط الفيديو"  value={form.video_url  || ''} onChange={e => set('video_url',  e.target.value)} placeholder="https://..." />
-            <Input  label="العمولة (%)"   value={form.commission_rate}  onChange={e => set('commission_rate', e.target.value)} type="number" />
+            <Input error={errors.photos_url}  label="رابط الصور"    value={form.photos_url || ''} onChange={e => set('photos_url', e.target.value)} placeholder="https://..." />
+            <Input error={errors.video_url}  label="رابط الفيديو"  value={form.video_url  || ''} onChange={e => set('video_url',  e.target.value)} placeholder="https://..." />
+            <Input error={errors.commission_rate}  label="العمولة (%)"   value={form.commission_rate}  onChange={e => set('commission_rate', e.target.value)} type="number" />
           </div>
           <Suspense fallback={<Loading />}>
             <RichTextEditor label="وصف العقار"    value={form.description || ''} onChange={v => set('description', v)} minHeight={160} />
