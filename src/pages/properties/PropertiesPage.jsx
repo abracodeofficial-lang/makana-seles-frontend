@@ -411,10 +411,12 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
   useEffect(() => {
     if (open && !wasOpen.current) {
       setTab('basic');
+      setTriedSave(false);
+      setNewOwner(null);
       if (editing) {
         setForm(editing);
-        setSelectedOwner(null);
-        setOwnerSearch('');
+        setSelectedOwner(editing.owner || null);
+        setOwnerSearch(editing.owner?.name || '');
       } else if (draft) {
         setForm(draft);
         if (draftOwner) {
@@ -454,17 +456,50 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
   });
 
   // البحث عن الملاك
-  const { data: ownersData } = useQuery({
+  const { data: ownersData, isFetching: ownersFetching } = useQuery({
     queryKey: ['owners-search', ownerSearch],
     queryFn: () => ownersApi.list({ search: ownerSearch }).then(r => r.data),
-    enabled: ownerSearch.length > 1,
+    enabled: ownerSearch.length > 1 && !selectedOwner,
   });
+  const ownerResults = ownerSearch.length > 1 ? (ownersData?.data?.data || []) : [];
 
   const handleOwnerSelect = (owner) => {
     setSelectedOwner(owner);
     set('owner_id', owner.id);
     setOwnerSearch(owner.name);
+    setNewOwner(null);
   };
+
+  // إضافة مالك جديد من جوّا الفورم (لما المالك مش موجود بالنظام)
+  const [newOwner, setNewOwner] = useState(null);   // { name, phone, type }
+  const [savingOwner, setSavingOwner] = useState(false);
+  const createOwner = async () => {
+    if (!newOwner.name?.trim() || !newOwner.phone?.trim()) {
+      toast.error('اسم المالك ورقم الجوال مطلوبين');
+      return;
+    }
+    setSavingOwner(true);
+    try {
+      const res = await ownersApi.create({ name: newOwner.name.trim(), phone: newOwner.phone.trim(), type: newOwner.type || 'مالك' });
+      handleOwnerSelect(res.data.data);
+      qc.invalidateQueries(['owners']);
+      toast.success('تم إضافة المالك واختياره للعقار');
+    } catch (err) {
+      const errors = err.response?.data?.errors;
+      toast.error(errors ? Object.values(errors).flat()[0] : 'تعذّر إضافة المالك');
+    } finally { setSavingOwner(false); }
+  };
+  const [triedSave, setTriedSave] = useState(false);
+
+  // أنواع العقارات من الإعدادات (مش قائمة ثابتة)
+  const { data: typesData } = useQuery({
+    queryKey: ['lookup-property-types'],
+    queryFn: () => lookupApi.propertyTypes().then(r => r.data),
+    staleTime: 300_000,
+  });
+  const propertyTypeOptions = (typesData?.data || [])
+    .filter(t => t.is_active !== false || String(t.id) === String(form.property_type_id))
+    .map(t => ({ value: String(t.id), label: t.name }));
 
   const handleSave = async () => {
     // validation مع توجيه للتاب الصح
@@ -479,7 +514,10 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       return;
     }
     if (!form.owner_id) {
-      toast.error('يرجى اختيار المالك');
+      setTriedSave(true);
+      toast.error(ownerSearch
+        ? 'كتبت اسم المالك بس ما اخترته — اضغط على اسمه من القائمة، أو أضفه كمالك جديد'
+        : 'لازم تختار مالك العقار من تاب "المالك"', { duration: 5000 });
       setTab('owner');
       return;
     }
@@ -501,7 +539,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
   const tabs = [
     { key: 'basic',    label: 'معلومات أساسية' },
     { key: 'location', label: 'الموقع' },
-    { key: 'owner',    label: 'المالك' },
+    { key: 'owner',    label: 'المالك *' },
     { key: 'details',  label: 'التفاصيل' },
     { key: 'media',    label: 'المميزات' },
   ];
@@ -554,9 +592,11 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
               tab === t.key ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200'
             }`}>
             {t.label}
-            {/* نقطة خضراء إذا التاب مكتمل */}
-            {tabComplete[t.key] && (
+            {/* نقطة خضراء إذا التاب مكتمل، وحمرا إذا ناقص بعد محاولة الحفظ */}
+            {tabComplete[t.key] ? (
               <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-400" />
+            ) : triedSave && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             )}
           </button>
         ))}
@@ -566,8 +606,8 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       {tab === 'basic' && (
         <div className="grid grid-cols-2 gap-4">
           <Input label="اسم العقار *"    value={form.name}        onChange={e => set('name', e.target.value)} />
-          <Select label="نوع العقار *"   value={form.property_type_id} onChange={e => set('property_type_id', e.target.value)}
-            options={[{value:'1',label:'شقة'},{value:'2',label:'فلة'},{value:'3',label:'عمارة'},{value:'4',label:'أرض'},{value:'5',label:'أدوار'},{value:'6',label:'بلك'}]} />
+          <Select label="نوع العقار *"   value={form.property_type_id ? String(form.property_type_id) : ''} onChange={e => set('property_type_id', e.target.value)}
+            options={propertyTypeOptions} />
           <Select label="نوع التسويق"    value={form.marketing_type_id} onChange={e => set('marketing_type_id', e.target.value)}
             options={[{value:'1',label:'ملاك أفراد'},{value:'2',label:'مزادات'},{value:'3',label:'مشاريع على الخارطة'},{value:'4',label:'مشاريع جاهزة'}]} />
           <Select label="الاستخدام"      value={form.usage_type_id} onChange={e => set('usage_type_id', e.target.value)}
@@ -633,16 +673,54 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       {tab === 'owner' && (
         <div className="space-y-4">
           <div className="space-y-1">
-            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">البحث عن مالك *</label>
-            <input
-              value={ownerSearch}
-              onChange={e => { setOwnerSearch(e.target.value); set('owner_id', ''); setSelectedOwner(null); }}
-              placeholder="ابحث بالاسم أو الكود..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-100 outline-none focus:border-blue-500"
-            />
-            {ownersData?.data?.data?.length > 0 && !selectedOwner && (
+            <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">مالك العقار *</label>
+            {!selectedOwner && (
+              <input
+                value={ownerSearch}
+                onChange={e => { setOwnerSearch(e.target.value); set('owner_id', ''); setSelectedOwner(null); }}
+                placeholder="اكتب اسم المالك أو رقمه أو الكود…"
+                autoFocus
+                className={`w-full bg-gray-800 border rounded-lg px-3 py-2.5 text-sm text-gray-100 outline-none focus:border-blue-500
+                  ${triedSave && !form.owner_id ? 'border-red-500' : 'border-gray-700'}`}
+              />
+            )}
+            {!selectedOwner && (
+              <p className="text-xs text-gray-500">
+                {ownerSearch.length < 2
+                  ? 'اكتب حرفين على الأقل، وبعدين اضغط على اسم المالك من القائمة اللي بتطلع.'
+                  : ownersFetching ? 'عم يبحث…'
+                  : ownerResults.length > 0 ? <span className="text-amber-300">👆 اضغط على اسم المالك من القائمة لتختاره — الكتابة لحالها ما بتكفي.</span>
+                  : null}
+              </p>
+            )}
+            {/* ما في نتائج: إضافة مالك جديد من هون */}
+            {!selectedOwner && ownerSearch.length >= 2 && !ownersFetching && ownerResults.length === 0 && !newOwner && (
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200">
+                ما لقينا مالك بهالاسم.
+                <Btn size="sm" onClick={() => setNewOwner({ name: ownerSearch, phone: '', type: 'مالك' })}>
+                  <Plus size={14}/> إضافة "{ownerSearch}" كمالك جديد
+                </Btn>
+              </div>
+            )}
+            {!selectedOwner && newOwner && (
+              <div className="p-3 rounded-lg bg-gray-800 border border-blue-500/40 space-y-3">
+                <p className="text-sm font-semibold text-gray-100">مالك جديد</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Input label="الاسم *" value={newOwner.name} onChange={e => setNewOwner(o => ({ ...o, name: e.target.value }))} />
+                  <Input label="رقم الجوال *" value={newOwner.phone} onChange={e => setNewOwner(o => ({ ...o, phone: e.target.value }))} dir="ltr" placeholder="05xxxxxxxx" />
+                  <Select label="الصفة" clearable={false} value={newOwner.type} onChange={e => setNewOwner(o => ({ ...o, type: e.target.value }))}
+                    options={['مالك','وكيل','وسيط','مكتب','مطور','مشروع'].map(v => ({ value: v, label: v }))} />
+                </div>
+                <div className="flex gap-2">
+                  <Btn size="sm" loading={savingOwner} onClick={createOwner}>حفظ المالك واختياره</Btn>
+                  <Btn size="sm" variant="ghost" onClick={() => setNewOwner(null)}>إلغاء</Btn>
+                </div>
+                <p className="text-xs text-gray-500">باقي بيانات المالك بتقدر تكمّلها بعدين من صفحة الملاك.</p>
+              </div>
+            )}
+            {ownerResults.length > 0 && !selectedOwner && (
               <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden mt-1">
-                {ownersData.data.data.slice(0, 5).map(owner => (
+                {ownerResults.slice(0, 8).map(owner => (
                   <div key={owner.id} onClick={() => handleOwnerSelect(owner)}
                     className="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-0">
                     <Avatar name={owner.name} size="sm" />
