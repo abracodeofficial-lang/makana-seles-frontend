@@ -13,7 +13,7 @@ import { Plus, Pencil, Trash2, Building2, Users, Star, MessageCircle, X, Downloa
 const toDateInput = (d) => d ? String(d).slice(0, 10) : '';
 const waPhone = (p = '') => { const d = p.replace(/\D/g,''); return d.startsWith('966') ? d : d.startsWith('0') ? '966'+d.slice(1) : '966'+d; };
 const todayISO = () => new Date().toISOString().slice(0, 10);
-const DIRECTIONS = ['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية'];
+const DIRECTIONS = ['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية','وسطى'];
 
 const STATUS_COLOR = { تم: 'green', لا: 'gray', جاري: 'amber', ملغي: 'red' };
 const TYPE_COLOR   = { مالك: 'blue', وكيل: 'teal', وسيط: 'purple', مكتب: 'amber', مطور: 'green', مشروع: 'blue' };

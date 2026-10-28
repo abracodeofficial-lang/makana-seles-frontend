@@ -708,7 +708,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
           <Input error={errors.street_width} label="عرض الشارع (متر)" value={form.street_width || ''} onChange={e => set('street_width', e.target.value)}
             type="number" min="0" step="0.5" placeholder="مثلاً 20" />
           <Select label="الاتجاه" value={form.direction || ''} onChange={e => set('direction', e.target.value)}
-            options={['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية'].map(v => ({ value: v, label: v }))} />
+            options={['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية','وسطى'].map(v => ({ value: v, label: v }))} />
           <div className="sm:col-span-2 space-y-1">
             <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">
               واجهة العقار <span className="normal-case font-normal text-gray-500">(اختار أكتر من وحدة إذا العقار زاوية)</span>
