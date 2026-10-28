@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { propertiesApi, ownersApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
-  PhoneText, MoneyInput, Btn, Badge, StatCard, Card, Modal, Input, Select,
+  PhoneText, MoneyInput, formatMoney, Btn, Badge, StatCard, Card, Modal, Input, Select,
   Textarea, Loading, ErrorMsg, InfoRow, Avatar,
   Table, Tr, Td, CountBox, FilterPanel,
 } from '../../components/ui';
@@ -270,7 +270,7 @@ export default function PropertiesPage() {
                       {Number(prop.listed_price).toLocaleString('en-US')} ريال
                     </p>
                     <p className="text-xs text-gray-500">
-                      {prop.total_area} م² • {Number(prop.price_per_meter).toLocaleString('en-US')} ريال/م²
+                      {formatMoney(prop.total_area)} م² •{Number(prop.price_per_meter).toLocaleString('en-US')} ريال/م²
                     </p>
                   </div>
                 </div>
@@ -684,7 +684,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             options={['متاح','محجوز','مباع','قيد المراجعة'].map(v => ({ value: v, label: v }))} />
           <MoneyInput error={errors.listed_price} label="السعر المعروض (ريال)" value={form.listed_price} onChange={e => set('listed_price', e.target.value)} />
           <MoneyInput error={errors.net_price} label="السعر الصافي (ريال)"  value={form.net_price}    onChange={e => set('net_price', e.target.value)} />
-          <Input error={errors.total_area} label="المساحة (م²)"          value={form.total_area}   onChange={e => set('total_area', e.target.value)}   type="number" />
+          <MoneyInput error={errors.total_area} label="المساحة (م²)"     value={form.total_area}   onChange={e => set('total_area', e.target.value)} />
           <Select label="هل انعمل عقد وساطة؟" clearable={false}
             value={form.has_brokerage_contract ? 'نعم' : 'لا'}
             onChange={e => set('has_brokerage_contract', e.target.value === 'نعم')}
@@ -938,7 +938,7 @@ function PropertyDetail({ id, onClose }) {
           <div className="text-left">
             <p className="text-2xl font-black text-blue-400">{fmt(p.listed_price)} ريال</p>
             <p className="text-xs text-gray-400">صافي: {fmt(p.net_price)} ريال</p>
-            <p className="text-xs text-gray-500">{p.total_area} م² • {fmt(p.price_per_meter)} ريال/م²</p>
+            <p className="text-xs text-gray-500">{formatMoney(p.total_area)} م² •{fmt(p.price_per_meter)} ريال/م²</p>
           </div>
         </div>
         <MediaBar photo={p.photo_status} design={p.design_status} video={p.video_status} marketing={p.marketing_status} />
@@ -973,7 +973,7 @@ function PropertyDetail({ id, onClose }) {
           <InfoRow label="عقد الوساطة"   value={p.has_brokerage_contract ? 'تم ✓' : 'لا'}
             valueClass={p.has_brokerage_contract ? 'text-green-400' : 'text-gray-400'} />
           <InfoRow label="رقم الترخيص"   value={p.license_number} />
-          <InfoRow label="المساحة"       value={p.total_area ? `${p.total_area} م²` : null} />
+          <InfoRow label="المساحة"       value={p.total_area ? `${formatMoney(p.total_area)} م²` : null} />
           <InfoRow label="الغرف"         value={p.rooms_count} />
           <InfoRow label="الحمامات"      value={p.bathrooms_count} />
           <InfoRow label="الصالات"       value={p.halls_count} />
