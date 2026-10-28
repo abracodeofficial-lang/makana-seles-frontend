@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { leadsApi, visitsApi, employeesApi, lookupApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
-  PhoneText, MoneyInput, Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
+  PhoneText, MoneyInput, formatMoney, Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
   Textarea, SearchBox, Avatar, Card, Loading, InfoRow, CountBox, FilterPanel, BoxSection,
 } from '../../components/ui';
 import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X, UserCheck, Home, Download, Compass, Banknote, CircleDot } from 'lucide-react';
@@ -340,7 +340,64 @@ const LEAD_DEFAULTS = {
   classification: 'استفسار', seriousness_level: '1',
   purchase_goal: 'سكن', request_status: 'مفتوح',
   property_type_id: '', operation_employee_id: '', direction: '',
+  properties: [],
 };
+
+// بطاقة عقار مختصرة: الكود - الحي - المنطقة - السعر - النوع
+function PropertyChip({ p, onRemove }) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-800 border border-gray-700">
+      <Home size={16} className="text-blue-400 mt-0.5 shrink-0" />
+      <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-5 gap-x-3 gap-y-1 text-xs">
+        <div><p className="text-gray-500">الكود</p><p className="font-mono font-bold text-gray-100" dir="ltr">{p.property_code}</p></div>
+        <div><p className="text-gray-500">الحي</p><p className="text-gray-200">{p.neighborhood?.name || '—'}</p></div>
+        <div><p className="text-gray-500">المنطقة</p><p className="text-gray-200">{p.city?.name || '—'}</p></div>
+        <div><p className="text-gray-500">السعر</p><p className="text-blue-300 font-semibold">{p.listed_price ? `${formatMoney(p.listed_price)} ريال` : '—'}</p></div>
+        <div><p className="text-gray-500">النوع</p><p className="text-gray-200">{p.property_type?.name || '—'}</p></div>
+      </div>
+      {onRemove && (
+        <button type="button" onClick={onRemove} title="إزالة" className="text-gray-500 hover:text-red-400 shrink-0">
+          <X size={16} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// العقارات اللي المهتم مهتم فيها — بيكتب الكود وبتنجاب بيانات العقار تلقائياً
+function InterestedProperties({ value = [], onChange }) {
+  const [code, setCode]       = useState('');
+  const [looking, setLooking] = useState(false);
+
+  const add = async () => {
+    const c = code.trim();
+    if (!c) return;
+    setLooking(true);
+    try {
+      const p = (await leadsApi.propertyLookup(c)).data.data;
+      if (value.some(x => x.id === p.id)) toast.error('العقار مضاف من قبل');
+      else { onChange([...value, p]); setCode(''); }
+    } catch (err) {
+      if (!err.response?.data?.message) toast.error('ما في عقار بهاد الكود');   // غير هيك الرسالة بتطلع من client.js
+    } finally { setLooking(false); }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <Input dir="ltr" label="كود العقار المهتم فيه" value={code} placeholder="RE-2026-001"
+            onChange={e => setCode(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} />
+        </div>
+        <Btn variant="outline" onClick={add} loading={looking}><Plus size={14} /> إضافة</Btn>
+      </div>
+      {value.map(p => (
+        <PropertyChip key={p.id} p={p} onRemove={() => onChange(value.filter(x => x.id !== p.id))} />
+      ))}
+    </div>
+  );
+}
 
 function LeadForm({ open, onClose, editing }) {
   const qc = useQueryClient();
@@ -398,6 +455,7 @@ function LeadForm({ open, onClose, editing }) {
         property_type_id:      editing.property_type_id      != null ? String(editing.property_type_id)      : '',
         operation_employee_id: editing.operation_employee_id != null ? String(editing.operation_employee_id) : '',
         follow_up_date: toDateInput(editing.follow_up_date),
+        properties: editing.properties || [],
       } : LEAD_DEFAULTS);
     }
   }, [open, editing]);
@@ -405,9 +463,11 @@ function LeadForm({ open, onClose, editing }) {
   const handleSave = async () => {
     if (!form.phone?.trim()) { toast.error('رقم التواصل مطلوب'); return; }
     setLoading(true);
+    const { properties, ...rest } = form;
+    const payload = { ...rest, property_ids: properties.map(p => p.id) };
     try {
-      if (editing) await leadsApi.update(editing.id, form);
-      else         await leadsApi.create(form);
+      if (editing) await leadsApi.update(editing.id, payload);
+      else         await leadsApi.create(payload);
       toast.success(editing ? 'تم التحديث' : 'تم إضافة المهتم');
       qc.invalidateQueries(['leads']);
       onClose();
@@ -430,6 +490,9 @@ function LeadForm({ open, onClose, editing }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input  label="الاسم الكامل"  value={form.name}  onChange={e => set('name', e.target.value)} />
         <Input dir="ltr"  label="رقم التواصل *"   value={form.phone} onChange={e => set('phone', e.target.value)} />
+        <div className="sm:col-span-2">
+          <InterestedProperties value={form.properties} onChange={v => set('properties', v)} />
+        </div>
         <Select label="صفة المتقدم"     value={form.applicant_type}    onChange={e => set('applicant_type', e.target.value)}
           options={['مهتم','مشتري','مستأجر','وسيط','وكيل','مطور'].map(v => ({ value: v, label: v }))} />
         <Select label="مصدر الطلب"      value={form.source}            onChange={e => set('source', e.target.value)}
@@ -527,6 +590,13 @@ function LeadDetail({ id, onClose }) {
       <InfoRow label="موظف الأوبريشن" value={l.operation_employee?.full_name} />
       <InfoRow label="آخر تحديث"      value={l.update_status} />
       <InfoRow label="ملاحظات"        value={l.update_notes} />
+
+      {l.properties?.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <p className="text-xs font-semibold text-gray-400">العقارات المهتم فيها ({l.properties.length})</p>
+          {l.properties.map(p => <PropertyChip key={p.id} p={p} />)}
+        </div>
+      )}
 
       {/* رحلة المهتم: الأوبريشن ← الأخصائي */}
       <div className="mt-4 p-4 bg-gray-800 rounded-xl">

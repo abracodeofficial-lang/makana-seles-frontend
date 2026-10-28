@@ -46,6 +46,7 @@ export const leadsApi = {
   updateSpecialistStage: (id, data) => client.patch(`/leads/${id}/specialist-stage`, data),
   operationDashboard:    ()         => client.get('/leads/operation-dashboard'),
   export:                (params)   => client.get('/leads/export', { params }),
+  propertyLookup:        (code)     => client.get('/leads/property-lookup', { params: { code } }),
 };
 
 // ── VISITS
