@@ -434,7 +434,11 @@ function LeadForm({ open, onClose, editing }) {
           .map(a => [a.employee_id, a.employee])
       ).values()]
     : [];
-  const operationEmployeeOptions = (operationEmployeesForType.length > 0 ? operationEmployeesForType : allEmployees)
+  // بدون تخصيص للنوع: موظفين المبيعات بس (حسب القسم أو المسمى الوظيفي) + الموظف المختار حالياً لو مش منهم
+  const isSales = (e) => /مبيعات|sales/i.test(`${e.department?.name || ''} ${e.job_title || ''}`);
+  const salesOnly = allEmployees.filter(e => isSales(e) || String(e.id) === String(form.operation_employee_id));
+  const salesEmployees = salesOnly.some(isSales) ? salesOnly : allEmployees;   // لو ما في قسم مبيعات أصلاً ما نفضّي القائمة
+  const operationEmployeeOptions = (operationEmployeesForType.length > 0 ? operationEmployeesForType : salesEmployees)
     .map(e => ({ value: String(e.id), label: e.full_name }));
 
   const handlePropertyTypeChange = (value) => {
