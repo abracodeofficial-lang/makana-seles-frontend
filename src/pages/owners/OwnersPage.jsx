@@ -271,7 +271,7 @@ export default function OwnersPage() {
 }
 
 const OWNER_DEFAULTS = {
-  name: '', type: 'مالك', phone: '', whatsapp: '', email: '', address: '',
+  name: '', type: 'مالك', phone: '', whatsapp: '', address: '',
   exclusive_status: 'لا', brokerage_status: 'لا', group: '',
   photo_status: 'جديد', design_status: 'جديد',
   video_status: 'جديد', publishing_status: 'جديد', notes: '',
@@ -328,7 +328,6 @@ function OwnerForm({ open, onClose, editing }) {
         <Select label="صفة المالك *"         value={form.type}  onChange={e => set('type', e.target.value)} options={typeOpts} />
         <Input dir="ltr"  label="رقم الهاتف *"         value={form.phone}     onChange={e => set('phone',     e.target.value)} placeholder="05xxxxxxxx" />
         <Input dir="ltr"  label="رقم الواتساب"         value={form.whatsapp || ''} onChange={e => set('whatsapp', e.target.value)} placeholder="05xxxxxxxx (إن اختلف)" />
-        <Input  label="البريد الإلكتروني"    value={form.email || ''}    onChange={e => set('email',    e.target.value)} type="email" />
         <Select label="حالة الحصري"          value={form.exclusive_status}  onChange={e => set('exclusive_status', e.target.value)}  options={statusOpts} />
         <Select label="حالة الوساطة"         value={form.brokerage_status}  onChange={e => set('brokerage_status', e.target.value)}  options={statusOpts} />
         <Input  label="تاريخ تحديث السعر"    value={form.price_update_date || ''}    onChange={e => set('price_update_date', e.target.value)}    type="date" />
@@ -384,7 +383,6 @@ function OwnerDetail({ id, onClose }) {
           </a>
         </div>
       )}
-      <InfoRow label="البريد"          value={o.email} />
       <InfoRow label="المدينة"         value={o.city?.name} />
       <InfoRow label="حالة الحصري"    value={o.exclusive_status} />
       <InfoRow label="حالة الوساطة"   value={o.brokerage_status} />
