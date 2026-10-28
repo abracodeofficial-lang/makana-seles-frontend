@@ -550,13 +550,13 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
   const [newOwner, setNewOwner] = useState(null);   // { name, phone, type }
   const [savingOwner, setSavingOwner] = useState(false);
   const createOwner = async () => {
-    if (!newOwner.phone?.trim()) {
-      toast.error('رقم جوال المالك مطلوب');
+    if (!newOwner.phone?.trim() || !newOwner.whatsapp?.trim()) {
+      toast.error('رقم الجوال ورقم الواتساب مطلوبين');
       return;
     }
     setSavingOwner(true);
     try {
-      const res = await ownersApi.create({ name: newOwner.name?.trim() || null, phone: newOwner.phone.trim(), type: newOwner.type || 'مالك' });
+      const res = await ownersApi.create({ name: newOwner.name?.trim() || null, phone: newOwner.phone.trim(), whatsapp: newOwner.whatsapp.trim(), type: newOwner.type || 'مالك' });
       handleOwnerSelect(res.data.data);
       qc.invalidateQueries(['owners']);
       toast.success('تم إضافة المالك واختياره للعقار');
@@ -766,7 +766,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             {!selectedOwner && ownerSearch.length >= 2 && !ownersFetching && ownerResults.length === 0 && !newOwner && (
               <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200">
                 ما لقينا مالك بهالاسم.
-                <Btn size="sm" onClick={() => setNewOwner({ name: ownerSearch, phone: '', type: 'مالك' })}>
+                <Btn size="sm" onClick={() => setNewOwner({ name: ownerSearch, phone: '', whatsapp: '', type: 'مالك' })}>
                   <Plus size={14}/> إضافة "{ownerSearch}" كمالك جديد
                 </Btn>
               </div>
@@ -774,9 +774,10 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             {!selectedOwner && newOwner && (
               <div className="p-3 rounded-lg bg-gray-800 border border-blue-500/40 space-y-3">
                 <p className="text-sm font-semibold text-gray-100">مالك جديد</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input label="الاسم" value={newOwner.name} onChange={e => setNewOwner(o => ({ ...o, name: e.target.value }))} />
                   <Input label="رقم الجوال *" value={newOwner.phone} onChange={e => setNewOwner(o => ({ ...o, phone: e.target.value }))} dir="ltr" placeholder="05xxxxxxxx" />
+                  <Input dir="ltr" label="رقم الواتساب *" value={newOwner.whatsapp || ''} onChange={e => setNewOwner(o => ({ ...o, whatsapp: e.target.value }))} placeholder="05xxxxxxxx" />
                   <Select label="الصفة" clearable={false} value={newOwner.type} onChange={e => setNewOwner(o => ({ ...o, type: e.target.value }))}
                     options={['مالك','وكيل','وسيط','مكتب','مطور','مشروع'].map(v => ({ value: v, label: v }))} />
                 </div>

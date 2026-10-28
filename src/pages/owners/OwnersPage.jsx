@@ -270,6 +270,13 @@ export default function OwnersPage() {
   );
 }
 
+
+// كود المالك بيتولّد بالسيرفر من آخر 4 أرقام بالواتساب — هون بس للمعاينة
+const waCodePreview = (n = '') => {
+  const d = String(n).replace(/[٠-٩]/g, c => '٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/\D/g, '');
+  return d.length >= 4 ? d.slice(-4) : '';
+};
+
 const OWNER_DEFAULTS = {
   name: '', type: 'مالك', phone: '', whatsapp: '', address: '',
   exclusive_status: 'لا', brokerage_status: 'لا', group: '',
@@ -295,6 +302,10 @@ function OwnerForm({ open, onClose, editing }) {
   }, [open, editing]);
 
   const handleSave = async () => {
+    if (!waCodePreview(form.whatsapp)) {
+      toast.error(form.whatsapp ? 'رقم الواتساب لازم يكون فيه 4 أرقام على الأقل' : 'رقم الواتساب مطلوب');
+      return;
+    }
     setLoading(true);
     try {
       if (editing) await ownersApi.update(editing.id, form);
@@ -327,7 +338,16 @@ function OwnerForm({ open, onClose, editing }) {
         <Input  label="اسم المالك"        value={form.name}  onChange={e => set('name', e.target.value)} placeholder="الاسم الكامل" />
         <Select label="صفة المالك *"         value={form.type}  onChange={e => set('type', e.target.value)} options={typeOpts} />
         <Input dir="ltr"  label="رقم الهاتف *"         value={form.phone}     onChange={e => set('phone',     e.target.value)} placeholder="05xxxxxxxx" />
-        <Input dir="ltr"  label="رقم الواتساب"         value={form.whatsapp || ''} onChange={e => set('whatsapp', e.target.value)} placeholder="05xxxxxxxx (إن اختلف)" />
+        <div className="space-y-1">
+          <Input dir="ltr"  label="رقم الواتساب *"       value={form.whatsapp || ''} onChange={e => set('whatsapp', e.target.value)} placeholder="05xxxxxxxx" />
+          {!editing && (
+            <p className="text-xs text-gray-500">
+              كود المالك: {waCodePreview(form.whatsapp)
+                ? <b className="text-blue-300 font-mono">{waCodePreview(form.whatsapp)}</b>
+                : 'بيتولّد تلقائياً من آخر 4 أرقام بالواتساب'}
+            </p>
+          )}
+        </div>
         <Select label="حالة الحصري"          value={form.exclusive_status}  onChange={e => set('exclusive_status', e.target.value)}  options={statusOpts} />
         <Select label="حالة الوساطة"         value={form.brokerage_status}  onChange={e => set('brokerage_status', e.target.value)}  options={statusOpts} />
         <Input  label="تاريخ تحديث السعر"    value={form.price_update_date || ''}    onChange={e => set('price_update_date', e.target.value)}    type="date" />
