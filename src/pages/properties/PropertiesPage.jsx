@@ -7,7 +7,7 @@ import { PageHeader } from '../../components/layout/Layout';
 import {
   PhoneText, MoneyInput, formatMoney, Btn, Badge, StatCard, Card, Modal, Input, Select,
   Textarea, Loading, ErrorMsg, InfoRow, Avatar,
-  Table, Tr, Td, CountBox, FilterPanel,
+  Table, Tr, Td, CountBox, BoxSection, FilterPanel,
 } from '../../components/ui';
 import { RichText } from '../../components/ui/RichText';
 // المحرر (TipTap) تقيل — بينحمّل بس لما ينفتح فورم العقار
@@ -190,26 +190,21 @@ export default function PropertiesPage() {
             <StatCard label="المتاحة"                  value={stats.available} icon={<CheckCircle size={18}/>} color="green" />
           </div>
 
-          <div>
-            <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5"><Building2 size={13}/> أنواع العقارات</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="space-y-2">
+            <BoxSection icon={<Building2 size={13}/>} title="أنواع العقارات">
               {byType.map(t => (
                 <CountBox key={t.id} label={t.label} count={t.count}
                   active={String(filters.property_type_id) === String(t.id)}
                   onClick={() => toggleF('property_type_id', t.id)} />
               ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5"><Compass size={13}/> اتجاهات العقارات</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-3">
+            </BoxSection>
+            <BoxSection icon={<Compass size={13}/>} title="الاتجاهات">
               {byDirection.map(d => (
                 <CountBox key={d.label} label={d.label} count={d.count}
                   active={filters.direction === d.label}
                   onClick={() => toggleF('direction', d.label)} />
               ))}
-            </div>
+            </BoxSection>
           </div>
         </div>
 

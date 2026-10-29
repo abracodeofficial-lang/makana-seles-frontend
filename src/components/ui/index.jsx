@@ -355,24 +355,32 @@ export function InfoRow({ label, value, valueClass = '' }) {
 }
 
 // بوكس عدّاد قابل للضغط — بيفلتر القائمة على قيمته (وضغطة تانية بتلغي)
+// شريحة عدّاد قابلة للضغط (فلتر): الاسم + العدد. الأصفار باهتة وبتنزل لآخر السطر
 export function CountBox({ label, count, active, onClick }) {
+  const empty = count === 0 && !active;
   return (
-    <button type="button" onClick={onClick}
-      className={`text-right rounded-xl border px-3 py-2.5 transition-all
-        ${active ? 'bg-blue-500/15 border-blue-500/60' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}
-        ${count === 0 && !active ? 'opacity-50' : ''}`}>
-      <p className="text-xs text-gray-400 truncate">{label}</p>
-      <p className={`text-xl font-black ${active ? 'text-blue-300' : count ? 'text-gray-100' : 'text-gray-500'}`}>{count}</p>
+    <button type="button" onClick={onClick} style={{ order: empty ? 1 : 0 }}
+      className={`inline-flex items-center gap-2 rounded-full border ps-3 pe-1.5 py-1 text-sm transition-all max-w-full
+        ${active
+          ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
+          : empty
+            ? 'border-gray-800 text-gray-500 hover:border-gray-600'
+            : 'bg-gray-800 border-gray-700 text-gray-200 hover:border-blue-500/60'}`}>
+      <span className="truncate">{label}</span>
+      <span className={`min-w-[1.6rem] text-center rounded-full px-1.5 py-0.5 text-xs font-bold
+        ${active ? 'bg-white/25 text-white' : empty ? 'text-gray-500' : 'bg-gray-950/60 text-blue-400'}`}>
+        {count}
+      </span>
     </button>
   );
 }
 
-// عنوان قسم + شبكة بوكسات عدّادات
-export function BoxSection({ icon, title, cols = '', fixed, children }) {
+// سطر شرائح: العنوان على اليمين والشرائح جنبه (على الموبايل العنوان فوق)
+export function BoxSection({ icon, title, children }) {
   return (
-    <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-3">
-      <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">{icon} {title}</p>
-      <div className={`grid grid-cols-2 ${fixed ? '' : 'sm:grid-cols-4'} ${cols} gap-3`}>{children}</div>
+    <div className="bg-gray-900/40 border border-gray-800 rounded-xl px-3 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+      <p className="text-xs font-semibold text-gray-400 flex items-center gap-1.5 sm:w-28 shrink-0">{icon} {title}</p>
+      <div className="flex flex-wrap gap-2 min-w-0">{children}</div>
     </div>
   );
 }
