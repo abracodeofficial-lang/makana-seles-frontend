@@ -8,7 +8,7 @@ import {
   PhoneText, MoneyInput, formatMoney, Btn, Badge, StatCard, Table, Tr, Td, Modal, Input, Select,
   Textarea, SearchBox, Avatar, Card, Loading, InfoRow, CountBox, FilterPanel, BoxSection,
 } from '../../components/ui';
-import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X, UserCheck, Home, Download, Compass, Banknote, CircleDot } from 'lucide-react';
+import { Plus, Pencil, Trash2, Calendar, Users, MessageSquare, TrendingUp, X, UserCheck, Home, Download, Compass, Banknote, CircleDot, ChevronDown } from 'lucide-react';
 
 const formatDate = (str) => {
   if (!str) return '—';
@@ -30,6 +30,31 @@ const followUpStatus = (date) => {
   const t = new Date(); const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
   return d === today ? 'اليوم' : d > today ? 'قادم' : 'متأخر';
 };
+
+const UPDATE_COLOR = { 'تم البيع': 'green', استفسار: 'blue', 'طلبات بحث': 'purple', 'اهتمام أولي': 'amber', 'اهتمام عالي': 'teal', 'اقتراحات أخرى': 'gray' };
+const BADGE_SELECT_COLORS = {
+  green: 'bg-green-500/15 text-green-400', red: 'bg-red-500/15 text-red-400', amber: 'bg-amber-500/15 text-amber-400',
+  blue: 'bg-blue-500/15 text-blue-400', purple: 'bg-purple-500/15 text-purple-400', teal: 'bg-teal-500/15 text-teal-400',
+  gray: 'bg-gray-500/15 text-gray-400',
+};
+
+// ليبل ملوّن فيه سهم — قائمة منسدلة لتغيير القيمة من الجدول مباشرة
+function BadgeSelect({ value, options, colors, onChange }) {
+  const cls = BADGE_SELECT_COLORS[colors[value]] || BADGE_SELECT_COLORS.gray;
+  return (
+    <div className="relative inline-flex" onClick={e => e.stopPropagation()}>
+      <select value={value || ''} onChange={e => e.target.value && e.target.value !== value && onChange(e.target.value)}
+        className={`appearance-none cursor-pointer rounded-full ps-2.5 pe-6 py-0.5 text-xs font-semibold border-0 outline-none focus:ring-1 focus:ring-blue-500/50 ${cls}`}>
+        {!value && <option value="">—</option>}
+        {options.map(o => <option key={o} value={o} className="bg-gray-900 text-gray-200">{o}</option>)}
+      </select>
+      <ChevronDown size={12} className={`pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 ${cls.split(' ')[1]}`} />
+    </div>
+  );
+}
+
+// "بين 4-10M" بالعربي بتنعرض "10M-4" — نعزل المقطع الرقمي كنص LTR
+const ltrNums = (s) => String(s).replace(/[\d.]+\s*[-–]\s*[\d.]+\s*M?/g, m => `⁦${m}⁩`);
 
 function FollowUpBadge({ date }) {
   const s = followUpStatus(date);
@@ -81,6 +106,12 @@ export default function LeadsPage() {
   const deleteMut = useMutation({
     mutationFn: leadsApi.delete,
     onSuccess: () => { toast.success('تم حذف المهتم'); qc.invalidateQueries(['leads']); },
+  });
+
+  // تعديل سريع من الجدول (حالة الطلب / حالة التحديث)
+  const quickMut = useMutation({
+    mutationFn: ({ id, ...data }) => leadsApi.update(id, data),
+    onSuccess: () => { toast.success('تم التحديث'); qc.invalidateQueries(['leads']); },
   });
 
   const stats        = data?.stats         || {};
@@ -263,46 +294,32 @@ export default function LeadsPage() {
         {tab === 'leads' && (
           <Card title="قائمة المهتمين">
             {isLoading ? <Loading /> : (
-              <Table headers={['الكود','اسم العميل','الهاتف','نوع العقار','الميزانية','التصنيف','مرحلة الأوبريشن/الأخصائي','حالة التحديث','المتابعة','حالة الطلب','إجراءات']}>
-                {data?.data?.data?.map(lead => (
+              <Table headers={['الأوبريشن','صفة المتقدم','رقم التواصل','فئة العقار','فئة السعر','التصنيف','حالة الطلب','تاريخ المتابعة','حالة المتابعة','حالة التحديث','تاريخ التحديث','تحديث حالة الطلب','']}>
+                {data?.data?.data?.map(lead => {
+                  const closed = lead.request_status === 'مغلق';
+                  const dash = <span className="text-gray-600 text-xs">—</span>;
+                  return (
                   <Tr key={lead.id} onClick={() => setShowDetail(lead.id)}>
-                    <Td><span className="text-blue-400 font-mono text-xs">{lead.lead_code}</span></Td>
-                    <Td>
-                      <div className="flex items-center gap-2">
-                        <Avatar name={lead.name} size="sm" />
-                        <p className="font-semibold text-gray-100 text-xs">{lead.name || <span className="text-gray-500 font-normal">بدون اسم</span>}</p>
-                      </div>
-                    </Td>
+                    <Td className="text-xs">{lead.operation_employee?.full_name || dash}</Td>
+                    <Td className="text-xs">{lead.applicant_type || dash}</Td>
                     <Td className="text-gray-400"><PhoneText value={lead.phone} /></Td>
-                    <Td>{lead.property_type?.name || '—'}</Td>
-                    <Td className="font-semibold text-blue-400">
-                      {lead.budget ? `${Number(lead.budget).toLocaleString('en-US')} ريال` : '—'}
-                    </Td>
-                    <Td><Badge label={lead.classification} color={CLASS_COLOR[lead.classification]}/></Td>
+                    <Td className="text-xs">{lead.property_type?.name || dash}</Td>
+                    <Td className="text-xs whitespace-nowrap">{lead.price_category ? ltrNums(lead.price_category) : dash}</Td>
+                    <Td>{lead.classification ? <Badge label={lead.classification} color={CLASS_COLOR[lead.classification]}/> : dash}</Td>
                     <Td>
-                      {lead.broker_employee_id ? (
-                        <Badge label={lead.specialist_stage || 'تواصل'} color={STAGE_COLOR[lead.specialist_stage] || 'gray'} />
-                      ) : lead.operation_status ? (
-                        <Badge label={lead.operation_status} color={OP_STATUS_COLOR[lead.operation_status] || 'gray'} />
-                      ) : (
-                        <span className="text-gray-600 text-xs">—</span>
-                      )}
+                      <BadgeSelect value={lead.request_status} options={['مفتوح', 'مغلق']} colors={STATUS_COLOR}
+                        onChange={v => quickMut.mutate({ id: lead.id, request_status: v })} />
                     </Td>
+                    <Td className="text-xs whitespace-nowrap">{!closed && lead.follow_up_date ? formatDate(lead.follow_up_date) : dash}</Td>
+                    <Td>{!closed && lead.follow_up_date ? <FollowUpBadge date={lead.follow_up_date} /> : dash}</Td>
                     <Td>
-                      {lead.update_status
-                        ? <div><p className="text-xs text-gray-200">{lead.update_status}</p>
-                            {lead.update_date && <p className="text-[11px] text-gray-500">{formatDate(lead.update_date)}</p>}</div>
-                        : <span className="text-gray-600 text-xs">—</span>}
+                      <BadgeSelect value={lead.update_status} options={UPDATE_STATUSES} colors={UPDATE_COLOR}
+                        onChange={v => quickMut.mutate({ id: lead.id, update_status: v, update_date: todayISO() })} />
                     </Td>
-                    <Td>
-                      {lead.request_status !== 'مغلق' && lead.follow_up_date ? (
-                        <div className="flex flex-col items-start gap-1">
-                          <FollowUpBadge date={lead.follow_up_date} />
-                          <span className="text-[11px] text-gray-500">{formatDate(lead.follow_up_date)}</span>
-                        </div>
-                      ) : <span className="text-gray-600 text-xs">—</span>}
+                    <Td className="text-xs whitespace-nowrap">{lead.update_date ? formatDate(lead.update_date) : dash}</Td>
+                    <Td className="text-xs max-w-[220px]">
+                      {lead.update_notes ? <p className="truncate" title={lead.update_notes}>{lead.update_notes}</p> : dash}
                     </Td>
-                    <Td><Badge label={lead.request_status} color={STATUS_COLOR[lead.request_status]}/></Td>
                     <Td>
                       <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                         <Btn size="sm" variant="ghost" onClick={() => { setEditing(lead); setShowForm(true); }}>
@@ -315,7 +332,8 @@ export default function LeadsPage() {
                       </div>
                     </Td>
                   </Tr>
-                ))}
+                  );
+                })}
               </Table>
             )}
             {!isLoading && data?.data?.data?.length === 0 && (
