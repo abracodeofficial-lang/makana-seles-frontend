@@ -354,7 +354,6 @@ export function InfoRow({ label, value, valueClass = '' }) {
   );
 }
 
-// بوكس عدّاد قابل للضغط — بيفلتر القائمة على قيمته (وضغطة تانية بتلغي)
 // شريحة عدّاد قابلة للضغط (فلتر): الاسم + العدد. الأصفار باهتة وبتنزل لآخر السطر
 export function CountBox({ label, count, active, onClick }) {
   const empty = count === 0 && !active;

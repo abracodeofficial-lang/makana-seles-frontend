@@ -20,7 +20,21 @@ const toDateInput = (d) => d ? String(d).slice(0, 10) : '';
 
 const CLASS_COLOR  = { جاد: 'green', استفسار: 'blue', بحث: 'gray' };
 const STATUS_COLOR = { مفتوح: 'green', مغلق: 'gray' };
-const FOLLOW_COLOR = { اليوم: 'amber', قادم: 'blue', متأخر: 'red' };
+const FOLLOW_COLOR = { اليوم: 'amber', قادم: 'green', متأخر: 'red' };
+const UPDATE_STATUSES = ['تم البيع', 'استفسار', 'طلبات بحث', 'اهتمام أولي', 'اهتمام عالي', 'اقتراحات أخرى'];
+
+// حالة المتابعة من تاريخها مقارنة باليوم (بتوقيت الجهاز)
+const followUpStatus = (date) => {
+  if (!date) return null;
+  const d = String(date).slice(0, 10);
+  const t = new Date(); const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  return d === today ? 'اليوم' : d > today ? 'قادم' : 'متأخر';
+};
+
+function FollowUpBadge({ date }) {
+  const s = followUpStatus(date);
+  return s ? <Badge label={s} color={FOLLOW_COLOR[s]} /> : null;
+}
 const SOURCES = ['حراج','عقار','بيوت','ديل','موقع مكانة','مباشر','اتصال','تيك توك','سناب','تويتر','انستجرام','برودكاست','لوحة','يوتيوب','مجتمع','إعادة استهداف','سيتي سكيب','أخرى'];
 const DIRECTIONS = ['شمالية','جنوبية','شرقية','غربية','شمالية شرقية','شمالية غربية','جنوبية شرقية','جنوبية غربية','وسطى'];
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -249,7 +263,7 @@ export default function LeadsPage() {
         {tab === 'leads' && (
           <Card title="قائمة المهتمين">
             {isLoading ? <Loading /> : (
-              <Table headers={['الكود','اسم العميل','الهاتف','نوع العقار','الميزانية','التصنيف','مرحلة الأوبريشن/الأخصائي','حالة الطلب','إجراءات']}>
+              <Table headers={['الكود','اسم العميل','الهاتف','نوع العقار','الميزانية','التصنيف','مرحلة الأوبريشن/الأخصائي','حالة التحديث','المتابعة','حالة الطلب','إجراءات']}>
                 {data?.data?.data?.map(lead => (
                   <Tr key={lead.id} onClick={() => setShowDetail(lead.id)}>
                     <Td><span className="text-blue-400 font-mono text-xs">{lead.lead_code}</span></Td>
@@ -273,6 +287,20 @@ export default function LeadsPage() {
                       ) : (
                         <span className="text-gray-600 text-xs">—</span>
                       )}
+                    </Td>
+                    <Td>
+                      {lead.update_status
+                        ? <div><p className="text-xs text-gray-200">{lead.update_status}</p>
+                            {lead.update_date && <p className="text-[11px] text-gray-500">{formatDate(lead.update_date)}</p>}</div>
+                        : <span className="text-gray-600 text-xs">—</span>}
+                    </Td>
+                    <Td>
+                      {lead.request_status !== 'مغلق' && lead.follow_up_date ? (
+                        <div className="flex flex-col items-start gap-1">
+                          <FollowUpBadge date={lead.follow_up_date} />
+                          <span className="text-[11px] text-gray-500">{formatDate(lead.follow_up_date)}</span>
+                        </div>
+                      ) : <span className="text-gray-600 text-xs">—</span>}
                     </Td>
                     <Td><Badge label={lead.request_status} color={STATUS_COLOR[lead.request_status]}/></Td>
                     <Td>
@@ -459,6 +487,7 @@ function LeadForm({ open, onClose, editing }) {
         property_type_id:      editing.property_type_id      != null ? String(editing.property_type_id)      : '',
         operation_employee_id: editing.operation_employee_id != null ? String(editing.operation_employee_id) : '',
         follow_up_date: toDateInput(editing.follow_up_date),
+        update_date:    toDateInput(editing.update_date),
         properties: editing.properties || [],
       } : LEAD_DEFAULTS);
     }
@@ -516,9 +545,23 @@ function LeadForm({ open, onClose, editing }) {
           options={['1','2','3','4'].map(v => ({ value: v, label: `${v}/4` }))} />
         <Select label="هدف الشراء"       value={form.purchase_goal || ''} onChange={e => set('purchase_goal', e.target.value)}
           options={['استثمار','سكن','سكن واستثمار'].map(v => ({ value: v, label: v }))} />
-        <Select label="حالة الطلب" clearable={false} value={form.request_status || 'مفتوح'} onChange={e => set('request_status', e.target.value)}
+        <Select label="حالة التحديث"     value={form.update_status || ''} onChange={e => set('update_status', e.target.value)}
+          options={UPDATE_STATUSES.map(v => ({ value: v, label: v }))} />
+        <Input  label="تاريخ التحديث"    value={form.update_date || ''} onChange={e => set('update_date', e.target.value)} type="date" />
+        <Select label="حالة الطلب" clearable={false} value={form.request_status || 'مفتوح'}
+          onChange={e => setForm(f => ({ ...f, request_status: e.target.value, follow_up_date: e.target.value === 'مغلق' ? '' : f.follow_up_date }))}
           options={['مفتوح', 'مغلق'].map(v => ({ value: v, label: v }))} />
-        <Input  label="تاريخ المتابعة"   value={form.follow_up_date || ''} onChange={e => set('follow_up_date', e.target.value)} type="date" />
+        {form.request_status === 'مغلق' ? (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-gray-400">تاريخ المتابعة</p>
+            <p className="text-xs text-gray-500 py-3">الطلب مغلق — ما في متابعة</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <Input label="تاريخ المتابعة" value={form.follow_up_date || ''} onChange={e => set('follow_up_date', e.target.value)} type="date" />
+            {form.follow_up_date && <FollowUpBadge date={form.follow_up_date} />}
+          </div>
+        )}
         <div className="sm:col-span-2">
           <Textarea label="ملاحظات" value={form.update_notes || ''} onChange={e => set('update_notes', e.target.value)} />
         </div>
@@ -594,7 +637,10 @@ function LeadDetail({ id, onClose }) {
       <InfoRow label="الميزانية"       value={l.budget ? `${Number(l.budget).toLocaleString('en-US')} ريال` : '—'} valueClass="text-blue-400" />
       <InfoRow label="هدف الشراء"     value={l.purchase_goal} />
       <InfoRow label="موظف الأوبريشن" value={l.operation_employee?.full_name} />
-      <InfoRow label="آخر تحديث"      value={l.update_status} />
+      <InfoRow label="حالة التحديث"   value={l.update_status ? `${l.update_status}${l.update_date ? ' · ' + formatDate(l.update_date) : ''}` : null} />
+      {l.request_status !== 'مغلق' && l.follow_up_date && (
+        <InfoRow label="تاريخ المتابعة" value={<span className="inline-flex items-center gap-2">{formatDate(l.follow_up_date)} <FollowUpBadge date={l.follow_up_date} /></span>} />
+      )}
       <InfoRow label="ملاحظات"        value={l.update_notes} />
 
       {l.properties?.length > 0 && (
