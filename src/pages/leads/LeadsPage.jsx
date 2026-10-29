@@ -563,7 +563,7 @@ function LeadForm({ open, onClose, editing }) {
           </div>
         )}
         <div className="sm:col-span-2">
-          <Textarea label="ملاحظات" value={form.update_notes || ''} onChange={e => set('update_notes', e.target.value)} />
+          <Textarea label="تحديث حالة الطلب" value={form.update_notes || ''} onChange={e => set('update_notes', e.target.value)} />
         </div>
       </div>
     </Modal>
@@ -641,7 +641,7 @@ function LeadDetail({ id, onClose }) {
       {l.request_status !== 'مغلق' && l.follow_up_date && (
         <InfoRow label="تاريخ المتابعة" value={<span className="inline-flex items-center gap-2">{formatDate(l.follow_up_date)} <FollowUpBadge date={l.follow_up_date} /></span>} />
       )}
-      <InfoRow label="ملاحظات"        value={l.update_notes} />
+      <InfoRow label="تحديث حالة الطلب" value={l.update_notes} />
 
       {l.properties?.length > 0 && (
         <div className="mt-4 space-y-2">
