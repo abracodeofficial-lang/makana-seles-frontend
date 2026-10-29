@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import { Btn, Input } from '../../components/ui';
 import toast from 'react-hot-toast';
+import { ThemeToggle } from '../../components/layout/Layout';
 
 export default function Login() {
   const [form, setForm]     = useState({ email: '', password: '' });
@@ -22,7 +23,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center font-[Cairo]" dir="rtl">
+    <div className="relative min-h-screen bg-gray-950 flex items-center justify-center font-[Cairo]" dir="rtl">
+      <ThemeToggle size={20} className="absolute top-4 left-4 p-2" />
       <div className="w-full max-w-sm">
 
         {/* Logo */}

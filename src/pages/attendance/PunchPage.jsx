@@ -57,7 +57,7 @@ function LiveClock() {
 
   return (
     <div className="text-center py-6 select-none">
-      <div className="text-5xl font-bold font-mono text-white tracking-widest mb-1">{timeStr}</div>
+      <div className="text-5xl font-bold font-mono text-gray-50 tracking-widest mb-1">{timeStr}</div>
       <div className="text-sm text-gray-400">{dateStr}</div>
     </div>
   );
@@ -297,17 +297,17 @@ export default function PunchPage() {
         <div className="grid grid-cols-3 gap-3 sm:gap-4">
           <div className="bg-gray-800 rounded-2xl p-5 text-center border border-gray-700">
             <AlertCircle size={20} className="text-amber-400 mx-auto mb-2"/>
-            <p className="text-3xl font-bold text-white">{stats.open ?? 0}</p>
+            <p className="text-3xl font-bold text-gray-50">{stats.open ?? 0}</p>
             <p className="text-xs text-gray-400 mt-1">معاملات مفتوحة</p>
           </div>
           <div className="bg-gray-800 rounded-2xl p-5 text-center border border-gray-700">
             <CheckCircle size={20} className="text-green-400 mx-auto mb-2"/>
-            <p className="text-3xl font-bold text-white">{stats.completed ?? 0}</p>
+            <p className="text-3xl font-bold text-gray-50">{stats.completed ?? 0}</p>
             <p className="text-xs text-gray-400 mt-1">معاملات منجزة</p>
           </div>
           <div className="bg-gray-800 rounded-2xl p-5 text-center border border-gray-700">
             <Calendar size={20} className="text-blue-400 mx-auto mb-2"/>
-            <p className="text-3xl font-bold text-white">{stats.total ?? 0}</p>
+            <p className="text-3xl font-bold text-gray-50">{stats.total ?? 0}</p>
             <p className="text-xs text-gray-400 mt-1">إجمالي هذا الشهر</p>
           </div>
         </div>

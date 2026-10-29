@@ -111,20 +111,66 @@ const sea = {               // تمييز إضافي
   950: '#14211F',
 };
 
+// ── الوضع الفاتح ─────────────────────────────────────────────────────
+// المحايدات بالفاتح: نفس أسماء الدرجات بس بقيم معكوسة ومضبوطة يدوياً
+// (gray-950 = خلفية الصفحة، gray-900 = الكروت بيضاء، gray-100 = النص الأساسي الغامق)
+const espressoLight = {
+  50:  '#19130F',
+  100: '#251D1A',
+  200: '#342A26',
+  300: '#4B3D37',
+  400: '#6E5C51',
+  500: '#8A7666',
+  600: '#B3A08C',
+  700: '#D9CAB7',
+  750: '#E6DACB',
+  800: '#EFE6D9',
+  900: '#FFFFFF',
+  950: '#F6F0E7',
+};
+
+// ألوان التمييز بالفاتح: الدرجات الفاتحة (نصوص 300/400) والغامقة (خلفيات شفافة 800-950) بتنقلب،
+// و500-700 (أزرار صلبة بنص أبيض) بتضل متل ما هي
+const FLIP = { 50: 950, 100: 900, 200: 800, 300: 700, 400: 600, 800: 200, 900: 100, 950: 50 };
+const flip = (scale) => Object.fromEntries(
+  Object.keys(scale).map(k => [k, scale[FLIP[k] ?? k]])
+);
+
+const PALETTES = {
+  gray:   [espresso, espressoLight],
+  blue:   [caramel, flip(caramel)],
+  red:    [rose, flip(rose)],
+  purple: [slate, flip(slate)],
+  green:  [sage, flip(sage)],
+  amber:  [honey, flip(honey)],
+  teal:   [sea, flip(sea)],
+};
+
+const rgb = (hex) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(' ');
+
+// كل درجة = متغير CSS، فبنبدّل الثيم بكلاس `light` على <html> بدون ما نلمس الكلاسات
+const cssVars = (idx) => Object.fromEntries(
+  Object.entries(PALETTES).flatMap(([name, pair]) =>
+    Object.entries(pair[idx]).map(([shade, hex]) => [`--c-${name}-${shade}`, rgb(hex)]))
+);
+const varScale = (name) => Object.fromEntries(
+  Object.keys(PALETTES[name][0]).map(shade => [shade, `rgb(var(--c-${name}-${shade}) / <alpha-value>)`])
+);
+
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
       colors: {
-        gray:   espresso,
-        blue:   caramel,
-        red:    rose,
-        rose:   rose,
-        purple: slate,
-        green:  sage,
-        emerald: sage,
-        amber:  honey,
-        teal:   sea,
+        gray:   varScale('gray'),
+        blue:   varScale('blue'),
+        red:    varScale('red'),
+        rose:   varScale('red'),
+        purple: varScale('purple'),
+        green:  varScale('green'),
+        emerald: varScale('green'),
+        amber:  varScale('amber'),
+        teal:   varScale('teal'),
         brand: {
           primary:   '#6E4E47',
           secondary: '#BF8857',
@@ -135,5 +181,10 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    ({ addBase }) => addBase({
+      ':root':      { ...cssVars(0), colorScheme: 'dark' },
+      'html.light': { ...cssVars(1), colorScheme: 'light' },
+    }),
+  ],
 };

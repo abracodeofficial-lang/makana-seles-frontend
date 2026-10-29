@@ -45,7 +45,7 @@ function Dashboard() {
           <a key={item.path} href={item.path}
             className="bg-gray-800 border border-gray-700 rounded-xl p-6 hover:border-gray-600 transition-all cursor-pointer group">
             <div className="text-4xl mb-3">{item.emoji}</div>
-            <p className="font-bold text-gray-200 group-hover:text-white transition-colors">{item.label}</p>
+            <p className="font-bold text-gray-200 group-hover:text-gray-50 transition-colors">{item.label}</p>
           </a>
         ))}
       </div>
@@ -79,9 +79,9 @@ export default function App() {
           position="top-left"
           toastOptions={{
             style: {
-              background: '#342A26',
-              color: '#F7EAD2',
-              border: '1px solid #4B3D37',
+              background: 'rgb(var(--c-gray-800))',
+              color: 'rgb(var(--c-gray-100))',
+              border: '1px solid rgb(var(--c-gray-700))',
               fontFamily: 'Cairo, sans-serif',
             },
             success: { iconTheme: { primary: '#68A178', secondary: '#fff' } },

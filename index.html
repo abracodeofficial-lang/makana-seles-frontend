@@ -8,6 +8,17 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="مكانة" />
+  <script>
+    // الثيم قبل أول رسم: المحفوظ، وإلا إعداد الجهاز
+    (function () {
+      var t; try { t = localStorage.getItem('theme'); } catch (e) {}
+      if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      if (t === 'light') {
+        document.documentElement.classList.add('light');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#F6F0E7');
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
 </head>

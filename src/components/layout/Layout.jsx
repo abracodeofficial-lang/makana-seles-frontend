@@ -9,7 +9,20 @@ import { Avatar } from '../ui';
 import {
   Home, Building2, Users, UserCheck, Clock, Calendar,
   FileCheck, Bell, BellRing, MessageCircle, LogOut, Menu, X, Fingerprint, Settings, BarChart2, ShieldCheck,
+  Sun, Moon,
 } from 'lucide-react';
+import { useTheme } from '../../lib/theme';
+
+export function ThemeToggle({ size = 16, className = '' }) {
+  const [theme, toggle] = useTheme();
+  const Icon = theme === 'light' ? Moon : Sun;
+  return (
+    <button onClick={toggle} className={`text-gray-500 hover:text-blue-400 transition-colors ${className}`}
+      title={theme === 'light' ? 'الوضع الداكن' : 'الوضع الفاتح'}>
+      <Icon size={size} />
+    </button>
+  );
+}
 
 const NAV = [
   { label: 'الرئيسية',        path: '/',             icon: Home,        section: null },
@@ -159,14 +172,18 @@ export default function Layout() {
                 <p className="text-xs text-gray-500 truncate">{employee?.job_title}</p>
               </div>
             </NavLink>
+            <ThemeToggle size={16} className="p-1.5 flex-shrink-0" />
             <button onClick={handleLogout} className="p-1.5 text-gray-600 hover:text-red-400 transition-colors flex-shrink-0" title="تسجيل الخروج">
               <LogOut size={16} />
             </button>
           </div>
           {collapsed && (
-            <button onClick={handleLogout} className="hidden md:flex w-full justify-center py-2 text-gray-600 hover:text-red-400 transition-colors">
-              <LogOut size={18} />
-            </button>
+            <>
+              <ThemeToggle size={18} className="hidden md:flex w-full justify-center py-2" />
+              <button onClick={handleLogout} className="hidden md:flex w-full justify-center py-2 text-gray-600 hover:text-red-400 transition-colors">
+                <LogOut size={18} />
+              </button>
+            </>
           )}
         </div>
       </aside>
@@ -180,9 +197,12 @@ export default function Layout() {
             <Menu size={22} />
           </button>
           <p className="text-sm font-bold text-gray-100">نظام الإدارة</p>
-          <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 transition-colors">
-            <LogOut size={18} />
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle size={18} />
+            <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 transition-colors">
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
 
         <OnlineBar />
