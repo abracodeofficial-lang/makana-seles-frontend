@@ -516,6 +516,8 @@ function LeadForm({ open, onClose, editing }) {
           options={['1','2','3','4'].map(v => ({ value: v, label: `${v}/4` }))} />
         <Select label="هدف الشراء"       value={form.purchase_goal || ''} onChange={e => set('purchase_goal', e.target.value)}
           options={['استثمار','سكن','سكن واستثمار'].map(v => ({ value: v, label: v }))} />
+        <Select label="حالة الطلب" clearable={false} value={form.request_status || 'مفتوح'} onChange={e => set('request_status', e.target.value)}
+          options={['مفتوح', 'مغلق'].map(v => ({ value: v, label: v }))} />
         <Input  label="تاريخ المتابعة"   value={form.follow_up_date || ''} onChange={e => set('follow_up_date', e.target.value)} type="date" />
         <div className="sm:col-span-2">
           <Textarea label="ملاحظات" value={form.update_notes || ''} onChange={e => set('update_notes', e.target.value)} />
