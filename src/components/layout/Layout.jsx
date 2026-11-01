@@ -9,7 +9,7 @@ import { Avatar } from '../ui';
 import {
   Home, Building2, Users, UserCheck, Clock, Calendar,
   FileCheck, Bell, BellRing, MessageCircle, LogOut, Menu, X, Fingerprint, Settings, BarChart2, ShieldCheck,
-  Sun, Moon, Trash2,
+  Sun, Moon, Trash2, History,
 } from 'lucide-react';
 import { useTheme } from '../../lib/theme';
 
@@ -39,6 +39,7 @@ const NAV = [
   { label: 'الإشعارات',        path: '/notifications', icon: Bell,        section: null },
   { label: 'التقارير',         path: '/reports',       icon: BarChart2,   section: null, perm: 'reports'  },
   { label: 'الإعدادات',        path: '/settings',      icon: Settings,    section: null, perm: 'settings' },
+  { label: 'سجل العمليات',     path: '/audit-log',     icon: History,     section: null, adminOnly: true },
   { label: 'المحذوفات',        path: '/trash',         icon: Trash2,      section: null, adminOnly: true },
 ];
 
