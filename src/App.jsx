@@ -21,6 +21,7 @@ const SettingsPage     = lazy(() => import('./pages/settings/SettingsPage'));
 const ReportsPage      = lazy(() => import('./pages/reports/ReportsPage'));
 const RolesPage        = lazy(() => import('./pages/roles/RolesPage'));
 const BroadcastPage    = lazy(() => import('./pages/broadcast/BroadcastPage'));
+const TrashPage        = lazy(() => import('./pages/trash/TrashPage'));
 
 function Dashboard() {
   const { employee } = useAuthStore();
@@ -185,6 +186,12 @@ export default function App() {
             <Route path="/reports" element={
               <Suspense fallback={<Loading />}>
                 <ReportsPage />
+              </Suspense>
+            } />
+
+            <Route path="/trash" element={
+              <Suspense fallback={<Loading />}>
+                <TrashPage />
               </Suspense>
             } />
 

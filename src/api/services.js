@@ -8,6 +8,13 @@ export const authApi = {
   changePassword: (data) => client.post('/auth/change-password', data),
 };
 
+// ── المحذوفات (للأدمن فقط)
+export const trashApi = {
+  summary: ()         => client.get('/trash/summary'),
+  list:    (params)   => client.get('/trash', { params }),
+  restore: (type, id) => client.post(`/trash/${type}/${id}/restore`),
+};
+
 // ── OWNERS
 export const ownersApi = {
   list:       (params)     => client.get('/owners', { params }),

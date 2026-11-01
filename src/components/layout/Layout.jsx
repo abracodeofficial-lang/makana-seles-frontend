@@ -3,13 +3,13 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
-import { attendanceApi, pushApi } from '../../api/services';
+import { attendanceApi, authApi, pushApi } from '../../api/services';
 import { pushSupported, enablePush, syncPush, isIOS, isStandalone } from '../../lib/push';
 import { Avatar } from '../ui';
 import {
   Home, Building2, Users, UserCheck, Clock, Calendar,
   FileCheck, Bell, BellRing, MessageCircle, LogOut, Menu, X, Fingerprint, Settings, BarChart2, ShieldCheck,
-  Sun, Moon,
+  Sun, Moon, Trash2,
 } from 'lucide-react';
 import { useTheme } from '../../lib/theme';
 
@@ -39,7 +39,20 @@ const NAV = [
   { label: 'الإشعارات',        path: '/notifications', icon: Bell,        section: null },
   { label: 'التقارير',         path: '/reports',       icon: BarChart2,   section: null, perm: 'reports'  },
   { label: 'الإعدادات',        path: '/settings',      icon: Settings,    section: null, perm: 'settings' },
+  { label: 'المحذوفات',        path: '/trash',         icon: Trash2,      section: null, adminOnly: true },
 ];
+
+// الأدمن بيحدده السيرفر (ونفس الفحص بيحمي مسارات المحذوفات)
+export function useIsAdmin() {
+  const employeeId = useAuthStore(s => s.employee?.id);
+  const { data, isLoading } = useQuery({
+    queryKey: ['is-admin', employeeId],
+    queryFn:  () => authApi.me().then(r => r.data.data.is_admin === true),
+    enabled:  !!employeeId,
+    staleTime: 5 * 60 * 1000,
+  });
+  return { isAdmin: data === true, isLoading };
+}
 
 // بيمسك أي خطأ بالصفحة ويعرض رسالة بدل شاشة سودا لكل النظام
 class PageErrorBoundary extends Component {
@@ -71,7 +84,10 @@ export default function Layout() {
     navigate('/login');
   };
 
+  const { isAdmin } = useIsAdmin();
+
   const visibleNav = NAV.filter(item => {
+    if (item.adminOnly) return isAdmin;
     if (!item.perm) return true;
     // perm ممكن تكون مصفوفة: يظهر إذا عنده صلاحية على وحدة منهم
     return [].concat(item.perm).some(p => permissions?.[p]?.view === true);
