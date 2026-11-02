@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { useOpenParam } from '../../lib/useOpenParam';
 import * as XLSX from 'xlsx';
 import { leadsApi, visitsApi, employeesApi, lookupApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
@@ -78,6 +79,7 @@ export default function LeadsPage() {
   const [filters, setFilters]       = useState({});
   const [showForm, setShowForm]     = useState(false);
   const [showDetail, setShowDetail] = useState(null);
+  useOpenParam(setShowDetail);
   const [editing, setEditing]       = useState(null);
   const [exporting, setExporting]   = useState(false);
 

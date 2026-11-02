@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { useOpenParam } from '../../lib/useOpenParam';
 import { employeesApi, lookupApi, permissionGroupsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import useAuthStore from '../../store/authStore';
@@ -41,6 +42,7 @@ export default function EmployeesPage() {
   const [profileMode, setProfileMode] = useState('view');
 
   const openProfile = (id, mode = 'view') => { setProfileId(id); setProfileMode(mode); };
+  useOpenParam(openProfile);
 
   const { data, isLoading } = useQuery({
     queryKey: ['employees', search, deptFilter, statusFilter],

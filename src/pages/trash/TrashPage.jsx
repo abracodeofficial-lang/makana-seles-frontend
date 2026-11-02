@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { RotateCcw, Trash2 } from 'lucide-react';
 import { trashApi } from '../../api/services';
 import { PageHeader, useIsAdmin } from '../../components/layout/Layout';
@@ -16,7 +16,8 @@ const formatDateTime = (str) => {
 export default function TrashPage() {
   const { isAdmin, isLoading: checking } = useIsAdmin();
   const qc = useQueryClient();
-  const [type, setType] = useState(null);
+  const [params] = useSearchParams();
+  const [type, setType] = useState(params.get('type'));
   const [page, setPage] = useState(1);
 
   const { data: summary } = useQuery({

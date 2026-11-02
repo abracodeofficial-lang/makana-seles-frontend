@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { useOpenParam } from '../../lib/useOpenParam';
 import * as XLSX from 'xlsx';
 import { ownersApi, operationAssignmentsApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
@@ -24,6 +25,7 @@ export default function OwnersPage() {
   const [filters, setFilters]       = useState({});
   const [showForm, setShowForm]     = useState(false);
   const [showDetail, setShowDetail] = useState(null);
+  useOpenParam(setShowDetail);
   const [showProps, setShowProps]   = useState(null);
   const [editing, setEditing]       = useState(null);
   const [exporting, setExporting]   = useState(false);

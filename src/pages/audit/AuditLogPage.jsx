@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { Navigate } from 'react-router-dom';
-import { History } from 'lucide-react';
+import { Link, Navigate } from 'react-router-dom';
+import { ExternalLink, History } from 'lucide-react';
 import { auditApi } from '../../api/services';
 import { PageHeader, useIsAdmin } from '../../components/layout/Layout';
 import { Badge, Btn, Card, FilterPanel, Input, Loading, Select, Table, Td, Tr } from '../../components/ui';
@@ -12,6 +12,8 @@ const ACTIONS = {
   deleted:  { label: 'حذف',     color: 'red' },
   restored: { label: 'استرجاع', color: 'blue' },
 };
+
+const LINK_TEXT = { record: 'فتح السجل', trash: 'بالمحذوفات', page: 'فتح الصفحة' };
 
 const formatDateTime = (str) => {
   if (!str) return '—';
@@ -90,7 +92,7 @@ export default function AuditLogPage() {
               <p className="text-sm">ما في عمليات مطابقة</p>
             </div>
           ) : (
-            <Table headers={['الوقت', 'الموظف', 'الإجراء', 'القسم', 'السجل', 'التفاصيل']}>
+            <Table headers={['الوقت', 'الموظف', 'الإجراء', 'القسم', 'السجل', 'الرابط', 'التفاصيل']}>
               {rows.map(l => (
                 <Tr key={l.id}>
                   <Td className="text-xs whitespace-nowrap">{formatDateTime(l.created_at)}</Td>
@@ -98,6 +100,13 @@ export default function AuditLogPage() {
                   <Td><Badge label={ACTIONS[l.action]?.label || l.action} color={ACTIONS[l.action]?.color || 'gray'} /></Td>
                   <Td className="text-xs">{l.type_label}</Td>
                   <Td className="text-xs"><bdi>{l.subject_label || '—'}</bdi></Td>
+                  <Td>
+                    {l.url ? (
+                      <Link to={l.url} target="_blank" className="inline-flex items-center gap-1 text-xs font-semibold text-blue-400 hover:underline whitespace-nowrap">
+                        <ExternalLink size={12} /> {LINK_TEXT[l.url_kind]}
+                      </Link>
+                    ) : <span className="text-gray-600 text-xs">—</span>}
+                  </Td>
                   <Td><Changes action={l.action} changes={l.changes} /></Td>
                 </Tr>
               ))}
