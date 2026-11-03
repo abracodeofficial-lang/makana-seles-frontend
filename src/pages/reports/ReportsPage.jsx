@@ -18,6 +18,10 @@ const numFmt  = (n) => Number(n || 0).toLocaleString('en-US');
 const dateFmt = (d) => d ? new Date(d).toLocaleDateString('ar-SA-u-nu-latn') : '—';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
+const localToday = () => {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+};
 const firstOfMonth = () => {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-01`;
@@ -119,11 +123,11 @@ function SalesReports() {
   // جلب العقارات
   const { data: propsData, isLoading: propsLoading } = useQuery({
     queryKey: ['rpt-properties', filters.from, filters.to],
-    queryFn:  () => client.get('/properties', { params: {
-      from_date: filters.from,
-      to_date:   filters.to,
-      per_page:  999,
-    }}).then(r => r.data),
+    // /export بيرجّع كل سجلات الفترة (القائمة العادية مقسمة صفحات)
+    queryFn:  () => client.get('/properties/export', { params: {
+      date_from: filters.from,
+      date_to:   filters.to,
+    }}).then(r => r.data.data || []),
     staleTime: 60_000,
   });
 
@@ -134,8 +138,11 @@ function SalesReports() {
     staleTime: 5 * 60_000,
   });
 
-  const rawProps = propsData?.data?.data ?? propsData?.data ?? [];
   const employees = empsData?.data?.data  ?? empsData?.data  ?? [];
+  const rawProps = useMemo(() => {
+    const byId = Object.fromEntries(employees.map(e => [e.id, e]));
+    return (propsData || []).map(p => ({ ...p, employee: byId[p.assigned_employee_id] }));
+  }, [propsData, employees]);
 
   // أقسام من الموظفين
   const departments = useMemo(() => {
@@ -146,9 +153,7 @@ function SalesReports() {
   // فلترة العقارات حسب القسم
   const properties = useMemo(() => {
     if (!filters.department) return rawProps;
-    return rawProps.filter(p =>
-      (p.employee?.department?.name || p.agent?.department?.name) === filters.department
-    );
+    return rawProps.filter(p => p.employee?.department?.name === filters.department);
   }, [rawProps, filters.department]);
 
   // إحصائيات
@@ -157,18 +162,18 @@ function SalesReports() {
   const sold       = properties.filter(p => ['مباع', 'sold'].includes(p.status)).length;
   const totalValue = properties
     .filter(p => ['مباع', 'sold'].includes(p.status))
-    .reduce((s, p) => s + Number(p.price || p.sale_price || 0), 0);
+    .reduce((s, p) => s + Number(p.listed_price || 0), 0);
 
   // أفضل الموظفين
   const performers = useMemo(() => {
     const map = {};
     properties.forEach(p => {
-      const emp = p.employee || p.agent;
+      const emp = p.employee;
       if (!emp?.id) return;
       if (!map[emp.id]) map[emp.id] = { employee: emp, count: 0, total: 0 };
       map[emp.id].count++;
       if (['مباع', 'sold'].includes(p.status))
-        map[emp.id].total += Number(p.price || p.sale_price || 0);
+        map[emp.id].total += Number(p.listed_price || 0);
     });
     return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 10);
   }, [properties]);
@@ -317,16 +322,18 @@ function HRReports() {
 
   // حساب نطاق التاريخ من الشهر المختار
   const [year, mon] = filters.month.split('-').map(Number);
-  const fromDate = `${year}-${String(mon).padStart(2, '0')}-01`;
+  const monthStart = `${year}-${String(mon).padStart(2, '0')}-01`;
   const lastDay  = new Date(year, mon, 0).getDate();
-  const toDate   = `${year}-${String(mon).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  const yearly   = filters.type === 'yearly';
+  const fromDate = yearly ? `${year}-01-01` : monthStart;
+  const toDate   = yearly ? `${year}-12-31` : `${year}-${String(mon).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  const periodLabel = yearly ? String(year) : filters.month;
+  const today    = localToday();
 
   // جلب طلبات الإجازات
   const { data: leavesData, isLoading: leavesLoading } = useQuery({
     queryKey: ['rpt-leaves', fromDate, toDate],
-    queryFn:  () => client.get('/leave-requests', { params: {
-      from_date: fromDate, to_date: toDate, per_page: 999,
-    }}).then(r => r.data),
+    queryFn:  () => client.get('/leave-requests/export', { params: { from: fromDate, to: toDate } }).then(r => r.data.data || []),
     staleTime: 60_000,
   });
 
@@ -340,15 +347,25 @@ function HRReports() {
   // جلب سجلات الحضور للفترة
   const { data: attendData } = useQuery({
     queryKey: ['rpt-attendance', fromDate, toDate],
-    queryFn:  () => client.get('/attendance', { params: {
-      from: fromDate, to: toDate, per_page: 999,
-    }}).then(r => r.data),
+    queryFn:  () => client.get('/attendance/export', { params: { from: fromDate, to: toDate } }).then(r => r.data.data || []),
     staleTime: 60_000,
   });
 
-  const rawLeaves  = leavesData?.data?.data  ?? leavesData?.data  ?? [];
+  // المجازون اليوم — مستقل عن الفترة المختارة
+  const { data: todayLeavesData } = useQuery({
+    queryKey: ['rpt-leaves-today', today],
+    queryFn:  () => client.get('/leave-requests/export', { params: { from: today, to: today } }).then(r => r.data.data || []),
+    staleTime: 60_000,
+  });
+
   const employees  = empsData?.data?.data    ?? empsData?.data    ?? [];
-  const attendance = attendData?.data?.data  ?? attendData?.data  ?? [];
+
+  // ربط كل سجل بموظفه الكامل (فيه القسم) + فلترة القسم
+  const withEmployee = (rows) => {
+    const byId = Object.fromEntries(employees.map(e => [e.id, e]));
+    const out  = (rows || []).map(r => ({ ...r, employee: byId[r.employee_id] || r.employee }));
+    return filters.department ? out.filter(r => r.employee?.department?.name === filters.department) : out;
+  };
 
   // أقسام للفلترة
   const departments = useMemo(() => {
@@ -356,11 +373,8 @@ function HRReports() {
     return [...s];
   }, [employees]);
 
-  // فلترة بالقسم
-  const leaves = useMemo(() => {
-    if (!filters.department) return rawLeaves;
-    return rawLeaves.filter(l => l.employee?.department?.name === filters.department);
-  }, [rawLeaves, filters.department]);
+  const leaves     = useMemo(() => withEmployee(leavesData), [leavesData, employees, filters.department]);
+  const attendance = useMemo(() => withEmployee(attendData), [attendData, employees, filters.department]);
 
   // ── إحصائيات ──
   const approved = leaves.filter(l =>
@@ -368,11 +382,9 @@ function HRReports() {
   );
   const totalDaysUsed = approved.reduce((s, l) => s + Number(l.days_count || 0), 0);
 
-  const today    = new Date();
-  const onLeave  = approved.filter(l =>
-    l.from_date && l.to_date &&
-    new Date(l.from_date) <= today && new Date(l.to_date) >= today
-  ).length;
+  const onLeave = new Set(
+    withEmployee(todayLeavesData).filter(l => l.final_status === 'معتمدة').map(l => l.employee_id)
+  ).size;
 
   const pending = leaves.filter(l =>
     ['قيد المراجعة', 'pending'].includes(l.final_status || l.status)
@@ -427,7 +439,7 @@ function HRReports() {
     params: { from: fromDate, to: toDate },
     employees, employeeKey: 'employee_id', department: filters.department,
     sheet: 'الإجازات',
-    file: `leaves-${filters.month}.xlsx`,
+    file: `leaves-${periodLabel}.xlsx`,
     mapRow: l => ({
       'رقم الطلب':  l.request_number,
       'الموظف':     l.employee?.full_name || '—',
@@ -444,7 +456,7 @@ function HRReports() {
     params: { from: fromDate, to: toDate },
     employees, employeeKey: 'employee_id', department: filters.department,
     sheet: 'الحضور',
-    file: `attendance-${filters.month}.xlsx`,
+    file: `attendance-${periodLabel}.xlsx`,
     mapRow: a => ({
       'الموظف':      a.employee?.full_name || '—',
       'رقم الموظف':  a.employee?.employee_number || '—',
@@ -565,7 +577,7 @@ function HRReports() {
           </div>
 
           {/* جدول تفصيلي للإجازات */}
-          <Card title={`تفاصيل الإجازات — ${filters.month}`}>
+          <Card title={`تفاصيل الإجازات — ${periodLabel}`}>
             {leaves.length === 0 ? (
               <EmptyState msg="لا توجد طلبات إجازة للفترة المحددة" />
             ) : (
