@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import client from '../../api/client';
 import { PageHeader } from '../../components/layout/Layout';
 import {
@@ -23,6 +25,24 @@ const firstOfMonth = () => {
 const currentMonth = () => {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+};
+
+// التصدير بيمر عبر client (بالتوكن بالهيدر) وبينزّل ملف إكسل — رابط مفتوح بتبويب ما بيوصله التوكن
+const exportSheet = async ({ url, params, employees, employeeKey, department, mapRow, sheet, file }) => {
+  try {
+    const res = await client.get(url, { params });
+    let records = res.data?.data || [];
+    if (department) {
+      const ids = new Set(employees.filter(e => e.department?.name === department).map(e => e.id));
+      records = records.filter(r => ids.has(r[employeeKey]));
+    }
+    if (!records.length) { toast.error('لا توجد بيانات ضمن الفترة المحددة'); return; }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(records.map(mapRow)), sheet);
+    XLSX.writeFile(wb, file);
+    toast.success(`تم تصدير ${records.length} سجل`);
+  } catch { toast.error('فشل التصدير'); }
 };
 
 const LEAVE_STATUS = {
@@ -168,7 +188,25 @@ function SalesReports() {
     محجوز: 'bg-amber-500',
   };
 
-  const exportUrl = `${client.defaults.baseURL}/properties/export?from_date=${filters.from}&to_date=${filters.to}&token=${localStorage.getItem('token')}`;
+  const exportProperties = () => exportSheet({
+    url: '/properties/export',
+    params: { date_from: filters.from, date_to: filters.to },
+    employees, employeeKey: 'assigned_employee_id', department: filters.department,
+    sheet: 'العقارات',
+    file: `properties-${filters.from}-${filters.to}.xlsx`,
+    mapRow: p => ({
+      'الكود':         p.property_code,
+      'الاسم':         p.name,
+      'نوع العقار':    p.property_type?.name || '—',
+      'المالك':        p.owner?.name || '—',
+      'المدينة':       p.city?.name || '—',
+      'الحي':          p.neighborhood?.name || '—',
+      'الحالة':        p.status,
+      'السعر المعروض': p.listed_price,
+      'المساحة':       p.total_area,
+      'تاريخ الإضافة': p.created_at?.slice(0, 10),
+    }),
+  });
 
   return (
     <div className="space-y-5">
@@ -189,7 +227,7 @@ function SalesReports() {
               ...departments.map(d => ({ value: d, label: d })),
             ]}
           />
-          <Btn variant="outline" onClick={() => window.open(exportUrl, '_blank')}>
+          <Btn variant="outline" onClick={exportProperties}>
             <FileDown size={14}/> تصدير Excel
           </Btn>
         </div>
@@ -383,10 +421,42 @@ function HRReports() {
     return Object.values(map).sort((a, b) => b.days - a.days).slice(0, 10);
   }, [approved]);
 
-  // روابط التصدير
-  const token = localStorage.getItem('token');
-  const exportLeaves     = `${client.defaults.baseURL}/leave-requests/export?from_date=${fromDate}&to_date=${toDate}&token=${token}`;
-  const exportAttendance = `${client.defaults.baseURL}/attendance/export?from=${fromDate}&to=${toDate}&token=${token}`;
+  // التصدير
+  const exportLeaves = () => exportSheet({
+    url: '/leave-requests/export',
+    params: { from: fromDate, to: toDate },
+    employees, employeeKey: 'employee_id', department: filters.department,
+    sheet: 'الإجازات',
+    file: `leaves-${filters.month}.xlsx`,
+    mapRow: l => ({
+      'رقم الطلب':  l.request_number,
+      'الموظف':     l.employee?.full_name || '—',
+      'نوع الإجازة': l.leave_type?.name || '—',
+      'من تاريخ':   l.from_date?.slice(0, 10),
+      'إلى تاريخ':  l.to_date?.slice(0, 10),
+      'عدد الأيام': l.days_count,
+      'الحالة':     l.final_status,
+      'السبب':      l.reason || '',
+    }),
+  });
+  const exportAttendance = () => exportSheet({
+    url: '/attendance/export',
+    params: { from: fromDate, to: toDate },
+    employees, employeeKey: 'employee_id', department: filters.department,
+    sheet: 'الحضور',
+    file: `attendance-${filters.month}.xlsx`,
+    mapRow: a => ({
+      'الموظف':      a.employee?.full_name || '—',
+      'رقم الموظف':  a.employee?.employee_number || '—',
+      'التاريخ':     String(a.date || '').slice(0, 10),
+      'الحضور':      a.check_in?.slice(0, 5) || '—',
+      'الانصراف':    a.check_out?.slice(0, 5) || '—',
+      'ساعات العمل': a.worked_hours,
+      'الحالة':      a.status,
+      'دقائق التأخير': a.late_minutes || 0,
+      'ملاحظات':     a.notes || '',
+    }),
+  });
 
   return (
     <div className="space-y-5">
@@ -420,10 +490,10 @@ function HRReports() {
             ]}
           />
           <div className="flex gap-2 flex-wrap">
-            <Btn variant="outline" onClick={() => window.open(exportLeaves, '_blank')}>
+            <Btn variant="outline" onClick={exportLeaves}>
               <FileDown size={14}/> تصدير الإجازات
             </Btn>
-            <Btn variant="outline" onClick={() => window.open(exportAttendance, '_blank')}>
+            <Btn variant="outline" onClick={exportAttendance}>
               <FileDown size={14}/> تصدير الحضور
             </Btn>
           </div>
