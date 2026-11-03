@@ -821,7 +821,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <Select label="صفة المعلن"   value={form.advertiser_role}   onChange={e => set('advertiser_role', e.target.value)}
-              options={['مالك','وكيل','مطور'].map(v => ({ value: v, label: v }))} />
+              options={['مالك','وكيل','وسيط','مطور'].map(v => ({ value: v, label: v }))} />
             <Select label="حالة الرهن"   value={form.mortgage_status}   onChange={e => set('mortgage_status', e.target.value)}
               options={['مرهون','غير مرهون'].map(v => ({ value: v, label: v }))} />
             {form.mortgage_status === 'مرهون' && (
