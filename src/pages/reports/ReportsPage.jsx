@@ -31,15 +31,44 @@ const currentMonth = () => {
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
 };
 
+// هل السجل ضمن فلتر القسم والموظف؟ (منبع واحد للأرقام والجداول والتصدير)
+const inScope = (employee, employeeId, { department, employee_id }) =>
+  (!employee_id || String(employeeId) === String(employee_id)) &&
+  (!department || employee?.department?.name === department);
+
+// فلترا القسم والموظف: قائمة الموظفين بتتبع القسم، وتغيير القسم بيلغي موظف من برّاه
+function ScopeFilters({ filters, setFilters, employees }) {
+  const departments = useMemo(
+    () => [...new Set(employees.map(e => e.department?.name).filter(Boolean))],
+    [employees]
+  );
+  const options = employees
+    .filter(e => !filters.department || e.department?.name === filters.department)
+    .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '', 'ar'))
+    .map(e => ({ value: String(e.id), label: e.full_name }));
+
+  const changeDepartment = (department) => setFilters(f => {
+    const emp = employees.find(e => String(e.id) === String(f.employee_id));
+    return { ...f, department, employee_id: !department || emp?.department?.name === department ? f.employee_id : '' };
+  });
+
+  return (
+    <>
+      <Select label="القسم" value={filters.department} onChange={e => changeDepartment(e.target.value)}
+        options={departments.map(d => ({ value: d, label: d }))} />
+      <Select label="اسم الموظف" value={filters.employee_id} onChange={e => setFilters(f => ({ ...f, employee_id: e.target.value }))}
+        options={options} />
+    </>
+  );
+}
+
 // التصدير بيمر عبر client (بالتوكن بالهيدر) وبينزّل ملف إكسل — رابط مفتوح بتبويب ما بيوصله التوكن
-const exportSheet = async ({ url, params, employees, employeeKey, department, mapRow, sheet, file }) => {
+const exportSheet = async ({ url, params, employees, employeeKey, filters, mapRow, sheet, file }) => {
   try {
     const res = await client.get(url, { params });
     let records = res.data?.data || [];
-    if (department) {
-      const ids = new Set(employees.filter(e => e.department?.name === department).map(e => e.id));
-      records = records.filter(r => ids.has(r[employeeKey]));
-    }
+    const byId = Object.fromEntries(employees.map(e => [e.id, e]));
+    records = records.filter(r => inScope(byId[r[employeeKey]], r[employeeKey], filters));
     if (!records.length) { toast.error('لا توجد بيانات ضمن الفترة المحددة'); return; }
 
     const wb = XLSX.utils.book_new();
@@ -117,7 +146,7 @@ export default function ReportsPage() {
 // تقارير المبيعات
 // ══════════════════════════════════════════════════════════════
 function SalesReports() {
-  const [filters, setFilters] = useState({ from: firstOfMonth(), to: todayISO(), department: '' });
+  const [filters, setFilters] = useState({ from: firstOfMonth(), to: todayISO(), department: '', employee_id: '' });
   const setF = (k, v) => setFilters(f => ({ ...f, [k]: v }));
 
   // جلب العقارات
@@ -144,17 +173,11 @@ function SalesReports() {
     return (propsData || []).map(p => ({ ...p, employee: byId[p.assigned_employee_id] }));
   }, [propsData, employees]);
 
-  // أقسام من الموظفين
-  const departments = useMemo(() => {
-    const s = new Set(employees.map(e => e.department?.name).filter(Boolean));
-    return [...s];
-  }, [employees]);
-
-  // فلترة العقارات حسب القسم
-  const properties = useMemo(() => {
-    if (!filters.department) return rawProps;
-    return rawProps.filter(p => p.employee?.department?.name === filters.department);
-  }, [rawProps, filters.department]);
+  // فلترة العقارات حسب القسم والموظف المسؤول
+  const properties = useMemo(
+    () => rawProps.filter(p => inScope(p.employee, p.assigned_employee_id, filters)),
+    [rawProps, filters.department, filters.employee_id]
+  );
 
   // إحصائيات
   const total      = properties.length;
@@ -196,7 +219,7 @@ function SalesReports() {
   const exportProperties = () => exportSheet({
     url: '/properties/export',
     params: { date_from: filters.from, date_to: filters.to },
-    employees, employeeKey: 'assigned_employee_id', department: filters.department,
+    employees, employeeKey: 'assigned_employee_id', filters,
     sheet: 'العقارات',
     file: `properties-${filters.from}-${filters.to}.xlsx`,
     mapRow: p => ({
@@ -223,15 +246,7 @@ function SalesReports() {
             onChange={e => setF('from', e.target.value)} className="w-40" />
           <Input label="إلى تاريخ" type="date" value={filters.to}
             onChange={e => setF('to', e.target.value)} className="w-40" />
-          <Select
-            label="القسم"
-            value={filters.department}
-            onChange={e => setF('department', e.target.value)}
-            options={[
-              { value: '', label: 'كل الأقسام' },
-              ...departments.map(d => ({ value: d, label: d })),
-            ]}
-          />
+          <ScopeFilters filters={filters} setFilters={setFilters} employees={employees} />
           <Btn variant="outline" onClick={exportProperties}>
             <FileDown size={14}/> تصدير Excel
           </Btn>
@@ -316,6 +331,7 @@ function HRReports() {
   const [filters, setFilters] = useState({
     month:      currentMonth(),
     department: '',
+    employee_id: '',
     type:       'monthly',
   });
   const setF = (k, v) => setFilters(f => ({ ...f, [k]: v }));
@@ -364,17 +380,11 @@ function HRReports() {
   const withEmployee = (rows) => {
     const byId = Object.fromEntries(employees.map(e => [e.id, e]));
     const out  = (rows || []).map(r => ({ ...r, employee: byId[r.employee_id] || r.employee }));
-    return filters.department ? out.filter(r => r.employee?.department?.name === filters.department) : out;
+    return out.filter(r => inScope(r.employee, r.employee_id, filters));
   };
 
-  // أقسام للفلترة
-  const departments = useMemo(() => {
-    const s = new Set(employees.map(e => e.department?.name).filter(Boolean));
-    return [...s];
-  }, [employees]);
-
-  const leaves     = useMemo(() => withEmployee(leavesData), [leavesData, employees, filters.department]);
-  const attendance = useMemo(() => withEmployee(attendData), [attendData, employees, filters.department]);
+  const leaves     = useMemo(() => withEmployee(leavesData), [leavesData, employees, filters.department, filters.employee_id]);
+  const attendance = useMemo(() => withEmployee(attendData), [attendData, employees, filters.department, filters.employee_id]);
 
   // ── إحصائيات ──
   const approved = leaves.filter(l =>
@@ -437,7 +447,7 @@ function HRReports() {
   const exportLeaves = () => exportSheet({
     url: '/leave-requests/export',
     params: { from: fromDate, to: toDate },
-    employees, employeeKey: 'employee_id', department: filters.department,
+    employees, employeeKey: 'employee_id', filters,
     sheet: 'الإجازات',
     file: `leaves-${periodLabel}.xlsx`,
     mapRow: l => ({
@@ -454,7 +464,7 @@ function HRReports() {
   const exportAttendance = () => exportSheet({
     url: '/attendance/export',
     params: { from: fromDate, to: toDate },
-    employees, employeeKey: 'employee_id', department: filters.department,
+    employees, employeeKey: 'employee_id', filters,
     sheet: 'الحضور',
     file: `attendance-${periodLabel}.xlsx`,
     mapRow: a => ({
@@ -483,15 +493,7 @@ function HRReports() {
             onChange={e => setF('month', e.target.value)}
             className="w-44"
           />
-          <Select
-            label="القسم"
-            value={filters.department}
-            onChange={e => setF('department', e.target.value)}
-            options={[
-              { value: '', label: 'كل الأقسام' },
-              ...departments.map(d => ({ value: d, label: d })),
-            ]}
-          />
+          <ScopeFilters filters={filters} setFilters={setFilters} employees={employees} />
           <Select
             label="نوع التقرير"
             value={filters.type}
