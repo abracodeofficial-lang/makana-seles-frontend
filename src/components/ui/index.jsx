@@ -89,10 +89,10 @@ const toLatinDigits = (s) => String(s)
   .replace(/[٫]/g, '.');
 
 // "1234567.5" → "1,234,567.5" (وهو عم ينكتب — بيحافظ على النقطة والكسور اللي انكتبت)
-const groupDigits = (raw) => {
+const groupDigits = (raw, typing = false) => {
   if (raw === '' || raw === null || raw === undefined) return '';
   let [int, dec] = String(raw).split('.');
-  if (dec !== undefined && /^0+$/.test(dec) && String(raw).endsWith('.00')) dec = undefined;  // "2500000.00" من السيرفر
+  if (!typing && dec !== undefined && /^0+$/.test(dec) && String(raw).endsWith('.00')) dec = undefined;  // "2500000.00" من السيرفر
   const grouped = (int || '').replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return dec !== undefined ? `${grouped || '0'}.${dec}` : grouped;
 };
@@ -102,19 +102,42 @@ const groupDigits = (raw) => {
 export function MoneyInput({ value, onChange, className = '', ...props }) {
   const ref = useRef(null);
   const caret = useRef(null);   // عدد الخانات قبل المؤشر — لنرجّعه لمكانه بعد التنسيق
+  const typing = useRef(false);         // وهو عم يكتب ما منشيل ".00" (بيكون نص كتابة 1.005)
+  const commaDecimal = useRef(false);   // الكسر بدأ بفاصلة كتبها المستخدم (603,45)
 
   const handleChange = (e) => {
     const el = e.target;
-    const before = toLatinDigits(el.value.slice(0, el.selectionStart ?? el.value.length));
-    caret.current = before.replace(/[^\d.]/g, '').length;
+    typing.current = true;
+    const pos = el.selectionStart ?? el.value.length;
+    let text = el.value;
+    const withoutTyped = text.slice(0, pos - 1) + text.slice(pos);
 
-    let raw = toLatinDigits(el.value).replace(/[^\d.]/g, '');
-    const dot = raw.indexOf('.');
+    // الفاصلة اللي بيكتبها المستخدم = كسر (الفواصل كل 3 خانات بتنضاف لحالها).
+    // بنعرفها بالمقارنة مع المعروض، لأن المتصفحات ما بتبلّغ دايماً عن الحرف المكتوب.
+    if (pos > 0 && /[,،]/.test(text[pos - 1]) && withoutTyped === display) {
+      commaDecimal.current = !withoutTyped.includes('.');
+      text = text.slice(0, pos - 1) + '.' + text.slice(pos);
+    } else if ((e.nativeEvent?.inputType === 'insertFromPaste' || e.nativeEvent?.data?.length > 1) && !text.includes('.')) {
+      text = text.replace(/[,،](\d{1,2})\s*$/, '.$1');
+    }
+
+    caret.current = toLatinDigits(text.slice(0, pos)).replace(/[^\d.]/g, '').length;
+
+    let raw = toLatinDigits(text).replace(/[^\d.]/g, '');
+    let dot = raw.indexOf('.');
+    if (dot === -1) commaDecimal.current = false;
+    // كتب الفواصل بنفسه (1,000): 3 خانات بعد الفاصلة يعني آلاف مش كسر
+    if (dot !== -1 && commaDecimal.current && raw.length - dot - 1 > 2) {
+      raw = raw.replace('.', '');
+      caret.current -= 1;
+      commaDecimal.current = false;
+      dot = -1;
+    }
     if (dot !== -1) raw = raw.slice(0, dot + 1) + raw.slice(dot + 1).replace(/\./g, '').slice(0, 2);
     onChange?.({ target: { value: raw } });
   };
 
-  const display = groupDigits(value);
+  const display = groupDigits(value, typing.current);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -130,7 +153,8 @@ export function MoneyInput({ value, onChange, className = '', ...props }) {
 
   return (
     <Input ref={ref} {...props} type="text" inputMode="decimal" dir="ltr" autoComplete="off"
-      className={`text-right ${className}`} value={display} onChange={handleChange} />
+      className={`text-right ${className}`} value={display} onChange={handleChange}
+      onBlur={(e) => { typing.current = false; props.onBlur?.(e); }} />
   );
 }
 
