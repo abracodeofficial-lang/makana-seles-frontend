@@ -11,6 +11,7 @@ import { Plus, Pencil, Trash2, ShieldCheck, Users } from 'lucide-react';
 // ── قائمة صفحات النظام القابلة للتحكم بصلاحياتها (مطابقة للباك اند) ──
 const PAGE_LABELS = {
   properties:      'العقارات',
+  publishing:      'النشر',
   owners:          'الملاك',
   leads:           'المهتمون',
   employees:       'الموظفون',

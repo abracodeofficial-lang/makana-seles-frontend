@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useOpenParam } from '../../lib/useOpenParam';
+import useAuthStore from '../../store/authStore';
 import * as XLSX from 'xlsx';
 import { propertiesApi, ownersApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
@@ -13,7 +14,7 @@ import {
 import { RichText } from '../../components/ui/RichText';
 // المحرر (TipTap) تقيل — بينحمّل بس لما ينفتح فورم العقار
 const RichTextEditor = lazy(() => import('../../components/ui/RichTextEditor'));
-import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, ChevronDown, MessageCircle, Phone, MapPin, Home, X, Download, Compass, TrendingUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, ChevronDown, MessageCircle, Phone, MapPin, Home, X, Download, Compass, TrendingUp, Send } from 'lucide-react';
 
 const STATUS_COLOR = { 'متاح': 'green', 'محجوز': 'amber', 'مباع': 'red', 'قيد المراجعة': 'purple' };
 const MEDIA_COLOR  = { 'تم': 'green', 'جاري': 'amber', 'معلق': 'red', 'ملغي': 'gray', 'جديد': 'blue' };
@@ -73,6 +74,8 @@ export default function PropertiesPage() {
   const [showForm, setShowForm]     = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   useOpenParam(setShowDetail);
+  const canAuth = useAuthStore(s => s.can);
+  const canWrite = canAuth('properties', 'edit') || !canAuth('publishing', 'view');
   const [editing, setEditing]       = useState(null);
   const [exporting, setExporting]   = useState(false);
 
@@ -94,6 +97,11 @@ export default function PropertiesPage() {
   const activeFilters = ['status', 'property_type_id', 'direction', 'price_range', 'code'].filter(k => filters[k]).length;
   const hasFilters = activeFilters > 0;
   const clearFilters = () => setFilters(f => ({ date_from: f.date_from, date_to: f.date_to }));
+
+  const readyMut = useMutation({
+    mutationFn: propertiesApi.markReady,
+    onSuccess: () => { toast.success('تم تحويل العقار لجاهز للنشر'); qc.invalidateQueries({ queryKey: ['properties'] }); },
+  });
 
   const deleteMut = useMutation({
     mutationFn: propertiesApi.delete,
@@ -153,11 +161,11 @@ export default function PropertiesPage() {
       <PageHeader
         title="إدارة العقارات"
         subtitle="عرض وإدارة جميع العقارات المسجلة"
-        actions={
+        actions={canWrite && (
           <Btn onClick={() => { setEditing(null); setShowForm(true); }}>
             <Plus size={16}/> إضافة عقار جديد
           </Btn>
-        }
+        )}
       />
 
       <div className="p-4 sm:p-6 space-y-6">
@@ -307,23 +315,38 @@ export default function PropertiesPage() {
                   </div>
                 </div>
 
+                {prop.workflow_status === 'returned' && prop.return_note && (
+                  <p className="mt-3 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-gray-200">رجع من الناشر: {prop.return_note}</p>
+                )}
+                {prop.workflow_status === 'ready_for_publish' && <p className="mt-3 text-xs text-blue-400">بانتظار الناشر</p>}
+
                 {/* Usage + Action Buttons */}
                 <div className="flex items-center justify-between mt-3">
                   <div className="text-xs text-gray-500">
                     <span>{prop.usage_type?.name || '—'}</span>
                     {prop.marketing_type?.name && <><span className="mx-1">·</span><span>{prop.marketing_type.name}</span></>}
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-wrap justify-end">
                     <Btn size="sm" onClick={() => setShowDetail(prop.id)}>
                       <Eye size={12}/> عرض
                     </Btn>
-                    <Btn size="sm" variant="outline" onClick={() => { setEditing(prop); setShowForm(true); }}>
-                      <Pencil size={12}/> تعديل
-                    </Btn>
-                    <Btn size="sm" variant="ghost" className="hover:text-red-400"
-                      onClick={() => confirm('حذف العقار؟') && deleteMut.mutate(prop.id)}>
-                      <Trash2 size={12}/>
-                    </Btn>
+                    {canWrite && (
+                      <>
+                        {['draft', 'returned'].includes(prop.workflow_status) && (
+                          <Btn size="sm" variant="outline" loading={readyMut.isPending && readyMut.variables === prop.id}
+                            onClick={() => readyMut.mutate(prop.id)}>
+                            <Send size={12}/> جاهز للنشر
+                          </Btn>
+                        )}
+                        <Btn size="sm" variant="outline" onClick={() => { setEditing(prop); setShowForm(true); }}>
+                          <Pencil size={12}/> تعديل
+                        </Btn>
+                        <Btn size="sm" variant="ghost" className="hover:text-red-400"
+                          onClick={() => confirm('حذف العقار؟') && deleteMut.mutate(prop.id)}>
+                          <Trash2 size={12}/>
+                        </Btn>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -372,7 +395,7 @@ export default function PropertiesPage() {
 const FORM_DEFAULTS = {
   name: '', property_type_id: '', marketing_type_id: '', usage_type_id: '',
   status: 'متاح', listed_price: 0, net_price: 0, total_area: 0,
-  has_brokerage_contract: false, license_number: '',
+  has_brokerage_contract: false, license_number: '', listing_purpose: '', ad_license_expiry: '', fal_license_number: '',
   city_id: '', neighborhood_id: '', plan_number: '', plot_number: '', street_width: '', direction: '', facade: '',
   map_url: '', latitude: '', longitude: '', nearby_places: '',
   owner_id: '', advertiser_role: 'مالك', mortgage_status: 'غير مرهون',
@@ -686,7 +709,11 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             value={form.has_brokerage_contract ? 'نعم' : 'لا'}
             onChange={e => set('has_brokerage_contract', e.target.value === 'نعم')}
             options={[{ value: 'نعم', label: 'نعم' }, { value: 'لا', label: 'لا' }]} />
-          <Input error={errors.license_number} label="رقم الترخيص" value={form.license_number || ''} onChange={e => set('license_number', e.target.value)} dir="ltr" />
+          <Select label="الغرض" value={form.listing_purpose || ''} onChange={e => set('listing_purpose', e.target.value)}
+            options={['بيع', 'إيجار'].map(v => ({ value: v, label: v }))} />
+          <Input type="date" label="انتهاء رخصة الإعلان" value={String(form.ad_license_expiry || '').slice(0, 10)} onChange={e => set('ad_license_expiry', e.target.value)} />
+          <Input label="رقم رخصة فال" value={form.fal_license_number || ''} onChange={e => set('fal_license_number', e.target.value)} dir="ltr" />
+          <Input error={errors.license_number} label="رقم الترخيص (رخصة الإعلان)" value={form.license_number || ''} onChange={e => set('license_number', e.target.value)} dir="ltr" />
         </div>
       )}
 
@@ -860,6 +887,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       {/* Tab: المميزات والوسائط */}
       {tab === 'media' && (
         <div className="space-y-4">
+          <PropertyImages propertyId={editing?.id} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select label="حالة التصوير"  value={form.photo_status}     onChange={e => set('photo_status',     e.target.value)} options={mediaOpts} />
             <Select label="حالة التصميم"  value={form.design_status}    onChange={e => set('design_status',    e.target.value)} options={mediaOpts} />
@@ -887,6 +915,64 @@ const SectionTitle = ({ children }) => (
 
 const yn = (v) => v ? 'نعم' : 'لا';
 const fmt = (n) => n ? Number(n).toLocaleString('en-US') : '—';
+
+// معرض صور العقار (للنشر): بينرفع بعد ما ينحفظ العقار
+function PropertyImages({ propertyId }) {
+  const qc = useQueryClient();
+  const { data: images = [] } = useQuery({
+    queryKey: ['property-images', propertyId],
+    queryFn:  () => propertiesApi.show(propertyId).then(r => r.data.data.images || []),
+    enabled:  !!propertyId,
+  });
+  const refresh = () => qc.invalidateQueries({ queryKey: ['property-images', propertyId] });
+
+  const uploadMut = useMutation({
+    mutationFn: (files) => {
+      const fd = new FormData();
+      files.forEach(f => fd.append('images[]', f));
+      return propertiesApi.uploadImages(propertyId, fd);
+    },
+    onSuccess: () => { toast.success('تم رفع الصور'); refresh(); },
+    onError: (err) => {
+      const errors = err.response?.data?.errors;
+      if (errors) Object.values(errors).flat().forEach(e => toast.error(e));
+    },
+  });
+  const deleteMut = useMutation({
+    mutationFn: (imageId) => propertiesApi.deleteImage(propertyId, imageId),
+    onSuccess: refresh,
+  });
+
+  return (
+    <div className="p-4 rounded-xl border border-gray-700 space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-sm font-semibold text-gray-200">صور الإعلان ({images.length})</p>
+        {propertyId && (
+          <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-600 text-gray-300 hover:border-blue-500 cursor-pointer ${uploadMut.isPending ? 'opacity-50 pointer-events-none' : ''}`}>
+            <Plus size={13}/> {uploadMut.isPending ? 'جاري الرفع...' : 'رفع صور'}
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden"
+              onChange={e => { if (e.target.files.length) uploadMut.mutate([...e.target.files]); e.target.value = ''; }} />
+          </label>
+        )}
+      </div>
+      {!propertyId ? (
+        <p className="text-xs text-gray-500">احفظ العقار أول، وبعدين افتحه للتعديل وارفع الصور.</p>
+      ) : images.length === 0 ? (
+        <p className="text-xs text-gray-500">النشر بيحتاج 3 صور على الأقل.</p>
+      ) : (
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          {images.map(img => (
+            <div key={img.id} className="relative group">
+              <img src={img.url} alt={img.file_name} loading="lazy" className="w-full h-20 object-cover rounded-lg" />
+              <button type="button" title="حذف" onClick={() => confirm('حذف الصورة؟') && deleteMut.mutate(img.id)}
+                className="absolute top-1 left-1 p-1 rounded-md bg-black/60 text-white hover:bg-red-600"><X size={12}/></button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PropertyDetail({ id, onClose }) {
   const { data, isLoading } = useQuery({

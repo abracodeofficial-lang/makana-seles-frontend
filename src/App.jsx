@@ -22,6 +22,8 @@ const ReportsPage      = lazy(() => import('./pages/reports/ReportsPage'));
 const RolesPage        = lazy(() => import('./pages/roles/RolesPage'));
 const BroadcastPage    = lazy(() => import('./pages/broadcast/BroadcastPage'));
 const TrashPage        = lazy(() => import('./pages/trash/TrashPage'));
+const PublishingPage   = lazy(() => import('./pages/publishing/PublishingPage'));
+const PublishDetailPage = lazy(() => import('./pages/publishing/PublishDetailPage'));
 const AuditLogPage     = lazy(() => import('./pages/audit/AuditLogPage'));
 
 function Dashboard() {
@@ -188,6 +190,21 @@ export default function App() {
               <Suspense fallback={<Loading />}>
                 <ReportsPage />
               </Suspense>
+            } />
+
+            <Route path="/publishing" element={
+              <ProtectedRoute page="publishing">
+                <Suspense fallback={<Loading />}>
+                  <PublishingPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+            <Route path="/publishing/:id" element={
+              <ProtectedRoute page="publishing">
+                <Suspense fallback={<Loading />}>
+                  <PublishDetailPage />
+                </Suspense>
+              </ProtectedRoute>
             } />
 
             <Route path="/audit-log" element={

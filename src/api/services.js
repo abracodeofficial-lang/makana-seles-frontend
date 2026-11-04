@@ -43,6 +43,26 @@ export const propertiesApi = {
   }),
   deleteDocument: (id, docId) => client.delete(`/properties/${id}/documents/${docId}`),
   export:         (params)     => client.get('/properties/export', { params }),
+  markReady:      (id)         => client.post(`/properties/${id}/ready`),
+  uploadImages:   (id, formData) => client.post(`/properties/${id}/images`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteImage:    (id, imageId) => client.delete(`/properties/${id}/images/${imageId}`),
+};
+
+// ── النشر
+export const publishingApi = {
+  list:          (params)  => client.get('/publishing', { params }),
+  show:          (id)      => client.get(`/publishing/properties/${id}`),
+  publish:       (id, platforms) => client.post(`/publishing/properties/${id}/publish`, { platforms }),
+  unpublish:     (id, platforms) => client.post(`/publishing/properties/${id}/unpublish`, { platforms }),
+  returnToEntry: (id, note) => client.post(`/publishing/properties/${id}/return`, { note }),
+  confirmManual: (id, platform, url) => client.post(`/publishing/properties/${id}/confirm/${platform}`, { url }),
+  pack:          (id)      => client.get(`/publishing/properties/${id}/pack`),
+  imagesZip:     (id)      => client.get(`/publishing/properties/${id}/images-zip`, { responseType: 'blob' }),
+  settings:      ()        => client.get('/publishing/settings'),
+  updateSettings: (data)   => client.put('/publishing/settings', data),
+  regenerateFeedToken: ()  => client.post('/publishing/settings/regenerate-feed-token'),
 };
 
 // ── LEADS

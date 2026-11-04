@@ -9,7 +9,7 @@ import { Avatar } from '../ui';
 import {
   Home, Building2, Users, UserCheck, Clock, Calendar,
   FileCheck, Bell, BellRing, MessageCircle, LogOut, Menu, X, Fingerprint, Settings, BarChart2, ShieldCheck,
-  Sun, Moon, Trash2, History,
+  Sun, Moon, Trash2, History, Send,
 } from 'lucide-react';
 import { useTheme } from '../../lib/theme';
 
@@ -27,6 +27,7 @@ export function ThemeToggle({ size = 16, className = '' }) {
 const NAV = [
   { label: 'الرئيسية',        path: '/',             icon: Home,        section: null },
   { label: 'العقارات',         path: '/properties',   icon: Building2,   section: 'المبيعات',         perm: 'properties' },
+  { label: 'النشر',            path: '/publishing',    icon: Send,        section: 'المبيعات',         perm: 'publishing' },
   { label: 'الملاك',           path: '/owners',        icon: Users,       section: 'المبيعات',         perm: 'owners' },
   { label: 'المهتمون',         path: '/leads',         icon: UserCheck,   section: 'المبيعات',         perm: 'leads' },
   { label: 'رسائل واتساب',     path: '/broadcast',     icon: MessageCircle, section: 'المبيعات',       perm: ['leads', 'owners'] },
@@ -48,7 +49,11 @@ export function useIsAdmin() {
   const employeeId = useAuthStore(s => s.employee?.id);
   const { data, isLoading } = useQuery({
     queryKey: ['is-admin', employeeId],
-    queryFn:  () => authApi.me().then(r => r.data.data.is_admin === true),
+    queryFn:  () => authApi.me().then(r => {
+      // الصلاحيات المحفوظة من الدخول ممكن تكون قديمة (مثلاً صفحة جديدة بالنظام)
+      useAuthStore.setState({ permissions: r.data.data.permissions });
+      return r.data.data.is_admin === true;
+    }),
     enabled:  !!employeeId,
     staleTime: 5 * 60 * 1000,
   });
