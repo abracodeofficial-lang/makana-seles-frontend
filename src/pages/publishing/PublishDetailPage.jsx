@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { CheckCircle2, ChevronRight, Copy, Download, ExternalLink, Package, RefreshCw, Send, Undo2, XCircle } from 'lucide-react';
 import { publishingApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
-import { Btn, Card, InfoRow, Input, Loading, Modal, Table, Td, Textarea, Tr, formatMoney } from '../../components/ui';
+import { Btn, Card, InfoRow, Input, Loading, Modal, Table, Td, Textarea, Tr, formatArea, formatMoney } from '../../components/ui';
 import useAuthStore from '../../store/authStore';
 import { PublicationBadge, formatDate, formatDateTime } from './shared';
 
@@ -68,7 +68,7 @@ export default function PublishDetailPage() {
             <div className="p-4">
               <InfoRow label="النوع / الغرض" value={[p.type, p.listing_purpose].filter(Boolean).join(' · ') || '—'} />
               <InfoRow label="السعر" value={p.listed_price ? `${formatMoney(p.listed_price)} ريال` : '—'} />
-              <InfoRow label="المساحة" value={p.total_area ? `${formatMoney(p.total_area)} م²` : '—'} />
+              <InfoRow label="المساحة" value={formatArea(p) ? `${formatArea(p)} م²` : '—'} />
               <InfoRow label="الموقع" value={[p.city, p.neighborhood].filter(Boolean).join(' · ') || '—'} />
               <InfoRow label="رخصة الإعلان" value={p.license_number ? `${p.license_number} · تنتهي ${formatDate(p.ad_license_expiry)}` : '—'} />
               <InfoRow label="رخصة فال" value={p.fal_license_number} />

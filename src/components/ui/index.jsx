@@ -83,6 +83,9 @@ export const formatMoney = (n) => {
   return Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
 };
 
+// المساحة زي ما انكتبت؛ العقارات القديمة ما إلها نص فبتنعرض من الرقم
+export const formatArea = (p) => p?.total_area_text || (Number(p?.total_area) ? formatMoney(p.total_area) : '');
+
 const toLatinDigits = (s) => String(s)
   .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
   .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))

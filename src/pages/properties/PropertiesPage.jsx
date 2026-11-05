@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx';
 import { propertiesApi, ownersApi, lookupApi } from '../../api/services';
 import { PageHeader } from '../../components/layout/Layout';
 import {
-  PhoneText, MoneyInput, formatMoney, Btn, Badge, StatCard, Card, Modal, Input, Select,
+  PhoneText, MoneyInput, formatMoney, formatArea, Btn, Badge, StatCard, Card, Modal, Input, Select,
   Textarea, Loading, ErrorMsg, InfoRow, Avatar,
   Table, Tr, Td, CountBox, BoxSection, FilterPanel,
 } from '../../components/ui';
@@ -140,7 +140,7 @@ export default function PropertiesPage() {
         'عرض الشارع':     Number(p.street_width) || '—',
         'الحالة':         p.status,
         'السعر المعروض':  p.listed_price,
-        'المساحة':        p.total_area,
+        'المساحة':        formatArea(p),
         'تاريخ الإضافة':  p.created_at?.slice(0, 10),
       }));
 
@@ -275,7 +275,7 @@ export default function PropertiesPage() {
                       {Number(prop.listed_price).toLocaleString('en-US')} ريال
                     </p>
                     <p className="text-xs text-gray-500">
-                      {formatMoney(prop.total_area)} م² •{Number(prop.price_per_meter).toLocaleString('en-US')} ريال/م²
+                      {formatArea(prop) || 0} م²{Number(prop.price_per_meter) > 0 && ` •${Number(prop.price_per_meter).toLocaleString('en-US')} ريال/م²`}
                     </p>
                   </div>
                 </div>
@@ -394,7 +394,7 @@ export default function PropertiesPage() {
 // ── Property Form (5 تبويبات) ─────────────────────────────────
 const FORM_DEFAULTS = {
   name: '', property_type_id: '', marketing_type_id: '', usage_type_id: '',
-  status: 'متاح', listed_price: 0, net_price: 0, total_area: 0,
+  status: 'متاح', listed_price: 0, net_price: 0, total_area_text: '',
   has_brokerage_contract: false, license_number: '', listing_purpose: '', ad_license_expiry: '', fal_license_number: '',
   city_id: '', neighborhood_id: '', plan_number: '', plot_number: '', street_width: '', direction: '', facade: '',
   map_url: '', latitude: '', longitude: '', nearby_places: '',
@@ -425,7 +425,7 @@ const TAB_RULES = {
     property_type_id: !f.property_type_id && 'اختار نوع العقار',
     listed_price:     negative(f.listed_price) && 'السعر ما بيصير سالب',
     net_price:        negative(f.net_price) && 'السعر ما بيصير سالب',
-    total_area:       negative(f.total_area) && 'المساحة ما بتصير سالبة',
+    total_area_text:  tooLong(f.total_area_text, 50) && 'المساحة طويلة (50 حرف كحد أقصى)',
     license_number:   tooLong(f.license_number, 50) && 'رقم الترخيص طويل (50 حرف كحد أقصى)',
   }),
   location: (f) => ({
@@ -481,11 +481,11 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       setErrors({});
       setNewOwner(null);
       if (editing) {
-        setForm(editing);
+        setForm({ ...editing, total_area_text: formatArea(editing) });
         setSelectedOwner(editing.owner || null);
         setOwnerSearch(editing.owner?.name || '');
       } else if (draft) {
-        setForm(draft);
+        setForm({ ...draft, total_area_text: draft.total_area_text ?? formatArea(draft) });
         if (draftOwner) {
           setSelectedOwner(draftOwner);
           setOwnerSearch(draftOwner.name);
@@ -704,7 +704,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             options={['متاح','محجوز','مباع','قيد المراجعة'].map(v => ({ value: v, label: v }))} />
           <MoneyInput error={errors.listed_price} label="السعر المعروض (ريال)" value={form.listed_price} onChange={e => set('listed_price', e.target.value)} />
           <MoneyInput error={errors.net_price} label="السعر الصافي (ريال)"  value={form.net_price}    onChange={e => set('net_price', e.target.value)} />
-          <MoneyInput error={errors.total_area} label="المساحة (م²)"     value={form.total_area}   onChange={e => set('total_area', e.target.value)} />
+          <Input error={errors.total_area_text} label="المساحة (م²)" placeholder="مثال: 565,56" value={form.total_area_text ?? ''} onChange={e => set('total_area_text', e.target.value)} />
           <Select label="هل انعمل عقد وساطة؟" clearable={false}
             value={form.has_brokerage_contract ? 'نعم' : 'لا'}
             onChange={e => set('has_brokerage_contract', e.target.value === 'نعم')}
@@ -1021,7 +1021,7 @@ function PropertyDetail({ id, onClose }) {
           <div className="text-left">
             <p className="text-2xl font-black text-blue-400">{fmt(p.listed_price)} ريال</p>
             <p className="text-xs text-gray-400">صافي: {fmt(p.net_price)} ريال</p>
-            <p className="text-xs text-gray-500">{formatMoney(p.total_area)} م² •{fmt(p.price_per_meter)} ريال/م²</p>
+            <p className="text-xs text-gray-500">{formatArea(p) || 0} م²{Number(p.price_per_meter) > 0 && ` •${fmt(p.price_per_meter)} ريال/م²`}</p>
           </div>
         </div>
         <MediaBar photo={p.photo_status} design={p.design_status} video={p.video_status} marketing={p.marketing_status} />
@@ -1056,7 +1056,7 @@ function PropertyDetail({ id, onClose }) {
           <InfoRow label="عقد الوساطة"   value={p.has_brokerage_contract ? 'تم ✓' : 'لا'}
             valueClass={p.has_brokerage_contract ? 'text-green-400' : 'text-gray-400'} />
           <InfoRow label="رقم الترخيص"   value={p.license_number} />
-          <InfoRow label="المساحة"       value={p.total_area ? `${formatMoney(p.total_area)} م²` : null} />
+          <InfoRow label="المساحة"       value={formatArea(p) ? `${formatArea(p)} م²` : null} />
           <InfoRow label="الغرف"         value={p.rooms_count} />
           <InfoRow label="الحمامات"      value={p.bathrooms_count} />
           <InfoRow label="الصالات"       value={p.halls_count} />
@@ -1131,7 +1131,7 @@ function PropertyDetail({ id, onClose }) {
           <SectionTitle>المعلومات المالية</SectionTitle>
           <InfoRow label="السعر المعروض"  value={`${fmt(p.listed_price)} ريال`} />
           <InfoRow label="السعر الصافي"   value={`${fmt(p.net_price)} ريال`} />
-          <InfoRow label="سعر المتر"      value={`${fmt(p.price_per_meter)} ريال/م²`} />
+          <InfoRow label="سعر المتر"      value={Number(p.price_per_meter) > 0 ? `${fmt(p.price_per_meter)} ريال/م²` : null} />
           {p.commission_rate > 0 && <InfoRow label="العمولة" value={`${p.commission_rate}%`} />}
           {p.market_price_3months > 0 && <InfoRow label="سعر السوق (3 أشهر)" value={`${fmt(p.market_price_3months)} ريال`} />}
           {p.discount_amount > 0 && <InfoRow label="الخصم" value={`${fmt(p.discount_amount)} ريال`} />}

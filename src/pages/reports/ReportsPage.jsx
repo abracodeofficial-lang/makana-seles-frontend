@@ -231,7 +231,7 @@ function SalesReports() {
       'الحي':          p.neighborhood?.name || '—',
       'الحالة':        p.status,
       'السعر المعروض': p.listed_price,
-      'المساحة':       p.total_area,
+      'المساحة':       p.total_area_text || p.total_area,
       'تاريخ الإضافة': p.created_at?.slice(0, 10),
     }),
   });
