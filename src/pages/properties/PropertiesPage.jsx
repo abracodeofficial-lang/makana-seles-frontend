@@ -14,7 +14,7 @@ import {
 import { RichText } from '../../components/ui/RichText';
 // المحرر (TipTap) تقيل — بينحمّل بس لما ينفتح فورم العقار
 const RichTextEditor = lazy(() => import('../../components/ui/RichTextEditor'));
-import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, ChevronDown, MessageCircle, Phone, MapPin, Home, X, Download, Compass, TrendingUp, Send, FileText, Image as ImageIcon, UploadCloud } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, ChevronDown, MessageCircle, Phone, Home, X, Download, Compass, TrendingUp, Send, FileText, Image as ImageIcon, UploadCloud, ExternalLink } from 'lucide-react';
 
 const STATUS_COLOR = { 'متاح': 'green', 'محجوز': 'amber', 'مباع': 'red', 'قيد المراجعة': 'purple' };
 const MEDIA_COLOR  = { 'تم': 'green', 'جاري': 'amber', 'معلق': 'red', 'ملغي': 'gray', 'جديد': 'blue' };
@@ -415,6 +415,42 @@ const TAB_KEYS = ['basic', 'location', 'owner', 'details', 'media'];
 // ── فحص فورم العقار تاب تاب (نفس قواعد السيرفر) ─────────────────
 const isEmpty   = (v) => v === '' || v === null || v === undefined;
 const isUrl     = (v) => { try { return /^https?:$/.test(new URL(v).protocol); } catch { return false; } };
+
+// رابط للعرض — http/https بس، وأي قيمة تانية بتنعرض نص حتى ما تنفتح كسكربت
+function LinkValue({ url }) {
+  if (!isUrl(url)) return <span dir="ltr" className="break-all">{url}</span>;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" dir="ltr"
+      className="inline-flex items-center gap-1 text-blue-400 underline underline-offset-2 hover:text-blue-300 break-all">
+      <ExternalLink size={12} className="flex-shrink-0" /> {new URL(url).hostname.replace(/^www\./, '')}
+    </a>
+  );
+}
+
+// خانة رابط بالفورم: الرابط الصحيح بينعرض لينك بينفتح بالضغط، وزر القلم بيرجعه للتعديل
+function UrlField({ label, error, value, onChange }) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing || error || !isUrl(value)) {
+    return (
+      <Input dir="ltr" error={error} label={label} placeholder="https://..." autoFocus={editing} value={value || ''} onChange={onChange}
+        onFocus={() => setEditing(true)} onBlur={() => setEditing(false)} />
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <p className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
+      <div className="flex items-center gap-2 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 h-[42px]">
+        <button type="button" title="تعديل الرابط" aria-label={`تعديل ${label}`} onClick={() => setEditing(true)}
+          className="p-1 text-gray-500 hover:text-gray-200 flex-shrink-0"><Pencil size={13}/></button>
+        <a href={value} target="_blank" rel="noopener noreferrer" dir="ltr"
+          className="flex-1 min-w-0 flex items-center gap-1.5 text-sm text-blue-400 underline underline-offset-2 hover:text-blue-300">
+          <ExternalLink size={13} className="flex-shrink-0" /><span className="truncate">{value}</span>
+        </a>
+      </div>
+    </div>
+  );
+}
 const negative  = (v) => !isEmpty(v) && Number(v) < 0;
 const badInt    = (v) => !isEmpty(v) && (!Number.isInteger(Number(v)) || Number(v) < 0);
 const tooLong   = (v, n) => String(v ?? '').length > n;
@@ -762,7 +798,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             </div>
           </div>
           <div className="sm:col-span-2">
-            <Input error={errors.map_url} label="رابط الموقع (Google Maps)" value={form.map_url || ''} onChange={e => set('map_url', e.target.value)} />
+            <UrlField error={errors.map_url} label="رابط الموقع (Google Maps)" value={form.map_url} onChange={e => set('map_url', e.target.value)} />
           </div>
           <Input error={errors.latitude} label="خط الطول" value={form.latitude  || ''} onChange={e => set('latitude',  e.target.value)} type="number" />
           <Input error={errors.longitude} label="خط العرض" value={form.longitude || ''} onChange={e => set('longitude', e.target.value)} type="number" />
@@ -907,8 +943,8 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             <Select label="حالة التصميم"  value={form.design_status}    onChange={e => set('design_status',    e.target.value)} options={mediaOpts} />
             <Select label="حالة الفيديو"  value={form.video_status}     onChange={e => set('video_status',     e.target.value)} options={mediaOpts} />
             <Select label="حالة النشر"    value={form.marketing_status} onChange={e => set('marketing_status', e.target.value)} options={mediaOpts} />
-            <Input error={errors.photos_url}  label="رابط الصور"    value={form.photos_url || ''} onChange={e => set('photos_url', e.target.value)} placeholder="https://..." />
-            <Input error={errors.video_url}  label="رابط الفيديو"  value={form.video_url  || ''} onChange={e => set('video_url',  e.target.value)} placeholder="https://..." />
+            <UrlField error={errors.photos_url} label="رابط الصور"   value={form.photos_url} onChange={e => set('photos_url', e.target.value)} />
+            <UrlField error={errors.video_url}  label="رابط الفيديو" value={form.video_url}  onChange={e => set('video_url',  e.target.value)} />
             <Input error={errors.commission_rate}  label="العمولة (%)"   value={form.commission_rate}  onChange={e => set('commission_rate', e.target.value)} type="number" />
           </div>
           <Suspense fallback={<Loading />}>
@@ -1188,15 +1224,7 @@ function PropertyDetail({ id, onClose }) {
           <InfoRow label="الاتجاه"       value={p.direction} />
           <InfoRow label="الواجهة"       value={p.facade} />
           {p.nearby_places && <InfoRow label="مواقع قريبة" value={p.nearby_places} />}
-          {p.map_url && (
-            <div className="flex items-center justify-between py-1 border-b border-gray-800 text-xs">
-              <span className="text-gray-500">الخريطة</span>
-              <a href={p.map_url} target="_blank" rel="noopener noreferrer"
-                className="text-blue-400 hover:underline flex items-center gap-1">
-                <MapPin size={11}/> عرض الموقع
-              </a>
-            </div>
-          )}
+          {p.map_url && <InfoRow label="رابط الموقع" value={<LinkValue url={p.map_url} />} />}
 
           <SectionTitle>تفاصيل العقار</SectionTitle>
           <InfoRow label="نوع التسويق"  value={p.marketing_type?.name} />
@@ -1228,8 +1256,8 @@ function PropertyDetail({ id, onClose }) {
               <Badge label={val || 'جديد'} color={MEDIA_COLOR[val] || 'blue'} />
             </div>
           ))}
-          {p.photos_url && <InfoRow label="رابط الصور"  value={<a href={p.photos_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">فتح</a>} />}
-          {p.video_url  && <InfoRow label="رابط الفيديو" value={<a href={p.video_url}  target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">فتح</a>} />}
+          {p.photos_url && <InfoRow label="رابط الصور"   value={<LinkValue url={p.photos_url} />} />}
+          {p.video_url  && <InfoRow label="رابط الفيديو" value={<LinkValue url={p.video_url} />} />}
         </div>
 
         {/* ─── العمود الأيسر ─── */}
