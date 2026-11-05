@@ -42,6 +42,7 @@ export const propertiesApi = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   deleteDocument: (id, docId) => client.delete(`/properties/${id}/documents/${docId}`),
+  documentFile:   (id, docId) => client.get(`/properties/${id}/documents/${docId}/file`, { responseType: 'blob' }),
   export:         (params)     => client.get('/properties/export', { params }),
   markReady:      (id)         => client.post(`/properties/${id}/ready`),
   uploadImages:   (id, formData) => client.post(`/properties/${id}/images`, formData, {

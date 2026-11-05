@@ -14,7 +14,7 @@ import {
 import { RichText } from '../../components/ui/RichText';
 // المحرر (TipTap) تقيل — بينحمّل بس لما ينفتح فورم العقار
 const RichTextEditor = lazy(() => import('../../components/ui/RichTextEditor'));
-import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, ChevronDown, MessageCircle, Phone, MapPin, Home, X, Download, Compass, TrendingUp, Send } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Eye, CheckCircle, Clock, XCircle, ChevronRight, ChevronLeft, ChevronDown, MessageCircle, Phone, MapPin, Home, X, Download, Compass, TrendingUp, Send, FileText, Image as ImageIcon, UploadCloud } from 'lucide-react';
 
 const STATUS_COLOR = { 'متاح': 'green', 'محجوز': 'amber', 'مباع': 'red', 'قيد المراجعة': 'purple' };
 const MEDIA_COLOR  = { 'تم': 'green', 'جاري': 'amber', 'معلق': 'red', 'ملغي': 'gray', 'جديد': 'blue' };
@@ -468,6 +468,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
   const qc = useQueryClient();
   const [tab, setTab]               = useState('basic');
   const [loading, setLoading]       = useState(false);
+  const [pendingFiles, setPendingFiles] = useState([]); // ملفات مشروع عقار جديد — بتنرفع بعد الحفظ
   const [ownerSearch, setOwnerSearch] = useState('');
   const [selectedOwner, setSelectedOwner] = useState(null);
   const [form, setForm]             = useState(FORM_DEFAULTS);
@@ -480,6 +481,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
       setTriedSave(false);
       setErrors({});
       setNewOwner(null);
+      setPendingFiles([]);
       if (editing) {
         setForm({ ...editing, total_area_text: formatArea(editing) });
         setSelectedOwner(editing.owner || null);
@@ -604,7 +606,13 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
     setLoading(true);
     try {
       if (editing) await propertiesApi.update(editing.id, form);
-      else         await propertiesApi.create(form);
+      else {
+        const created = (await propertiesApi.create(form)).data.data;
+        for (const file of pendingFiles) {
+          try { await uploadProjectFile(created.id, file); }
+          catch (err) { toast.error(`انحفظ العقار بس ما انرفع ${file.name}: ${uploadError(err)}`); }
+        }
+      }
       toast.success(editing ? 'تم التحديث' : 'تم إضافة العقار');
       qc.invalidateQueries(['properties']);
       onClearDraft?.();
@@ -865,6 +873,7 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
 
       {/* Tab: التفاصيل */}
       {tab === 'details' && (
+        <div className="space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Input error={errors.rooms_count} label="عدد الغرف"      value={form.rooms_count}     onChange={e => set('rooms_count',     e.target.value)} type="number" />
           <Input error={errors.bathrooms_count} label="عدد الحمامات"   value={form.bathrooms_count} onChange={e => set('bathrooms_count', e.target.value)} type="number" />
@@ -881,6 +890,8 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
             options={[{value:'نعم',label:'نعم'},{value:'لا',label:'لا'}]} />
           <Select label="مصعد"          value={form.has_elevator? 'نعم' : 'لا'} onChange={e => set('has_elevator', e.target.value === 'نعم')}
             options={[{value:'نعم',label:'نعم'},{value:'لا',label:'لا'}]} />
+        </div>
+        <ProjectFiles propertyId={editing?.id} pending={pendingFiles} onPendingChange={setPendingFiles} />
         </div>
       )}
 
@@ -966,6 +977,139 @@ function PropertyImages({ propertyId }) {
               <img src={img.url} alt={img.file_name} loading="lazy" className="w-full h-20 object-cover rounded-lg" />
               <button type="button" title="حذف" onClick={() => confirm('حذف الصورة؟') && deleteMut.mutate(img.id)}
                 className="absolute top-1 left-1 p-1 rounded-md bg-black/60 text-white hover:bg-red-600"><X size={12}/></button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const PROJECT_FILE = 'ملف المشروع';
+const PROJECT_FILE_EXT = /\.(pdf|jpe?g|png|webp)$/i;
+const PROJECT_FILE_MAX_MB = 20;
+
+const uploadProjectFile = (propertyId, file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('type', PROJECT_FILE);
+  return propertiesApi.uploadDocument(propertyId, fd);
+};
+const uploadError = (err) => {
+  const errors = err.response?.data?.errors;
+  if (errors) return Object.values(errors).flat()[0];
+  return err.response?.status === 413 ? 'حجم الملف أكبر من المسموح على السيرفر' : (err.response?.data?.message || 'تعذّر الرفع');
+};
+
+// الرابط بيحتاج تسجيل دخول، فبنجيب الملف بالتوكن وبنفتحه بتبويب جديد
+const openDocument = async (propertyId, doc) => {
+  const tab = window.open('', '_blank');
+  try {
+    const { data } = await propertiesApi.documentFile(propertyId, doc.id);
+    const url = URL.createObjectURL(data);
+    if (tab) tab.location = url; else window.location.href = url;
+  } catch {
+    tab?.close();
+    toast.error('تعذّر فتح الملف');
+  }
+};
+
+function DocIcon({ name }) {
+  return /\.pdf$/i.test(name || '')
+    ? <FileText size={14} className="text-red-400 flex-shrink-0" />
+    : <ImageIcon size={14} className="text-blue-400 flex-shrink-0" />;
+}
+
+// ملف المشروع: سحب وإفلات، PDF وصور بس
+function ProjectFiles({ propertyId, pending, onPendingChange }) {
+  const qc = useQueryClient();
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(0);
+
+  const { data: files = [] } = useQuery({
+    queryKey: ['property-project-files', propertyId],
+    queryFn:  () => propertiesApi.show(propertyId).then(r => (r.data.data.documents || []).filter(d => d.type === PROJECT_FILE)),
+    enabled:  !!propertyId,
+  });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['property-project-files', propertyId] });
+    qc.invalidateQueries({ queryKey: ['property', propertyId] });
+  };
+  const deleteMut = useMutation({
+    mutationFn: (docId) => propertiesApi.deleteDocument(propertyId, docId),
+    onSuccess: refresh,
+  });
+
+  // إفلات ملف برّا المربع كان بيفتحه المتصفح وبيضيّع الفورم
+  useEffect(() => {
+    const block = (e) => e.preventDefault();
+    window.addEventListener('dragover', block);
+    window.addEventListener('drop', block);
+    return () => {
+      window.removeEventListener('dragover', block);
+      window.removeEventListener('drop', block);
+    };
+  }, []);
+
+  const addFiles = async (list) => {
+    const accepted = [];
+    for (const file of list) {
+      if (!PROJECT_FILE_EXT.test(file.name)) toast.error(`${file.name}: مسموح PDF وصور (JPG, PNG, WEBP) بس`);
+      else if (file.size > PROJECT_FILE_MAX_MB * 1024 * 1024) toast.error(`${file.name}: الحد الأقصى ${PROJECT_FILE_MAX_MB}MB`);
+      else accepted.push(file);
+    }
+    if (!accepted.length) return;
+    if (!propertyId) { onPendingChange([...pending, ...accepted]); return; }
+
+    setUploading(accepted.length);
+    for (const file of accepted) {
+      try { await uploadProjectFile(propertyId, file); }
+      catch (err) { toast.error(`${file.name}: ${uploadError(err)}`); }
+      setUploading(n => n - 1);
+    }
+    refresh();
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    addFiles([...e.dataTransfer.files]);
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">{PROJECT_FILE}</p>
+      <label
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
+        onDrop={onDrop}
+        className={`flex flex-col items-center justify-center gap-1 p-5 rounded-xl border-2 border-dashed text-center cursor-pointer transition-colors focus-within:border-blue-500 ${
+          dragging ? 'border-blue-500 bg-blue-500/10' : 'border-gray-700 hover:border-gray-600'
+        } ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
+        <UploadCloud size={22} className={dragging ? 'text-blue-400' : 'text-gray-500'} />
+        <span className="text-sm font-semibold text-gray-300">
+          {uploading ? `جاري الرفع... (باقي ${uploading})` : dragging ? 'أفلت الملفات هون' : 'اسحب الملفات هون أو اضغط للاختيار'}
+        </span>
+        <span className="text-xs text-gray-500">PDF وصور (JPG, PNG, WEBP) — لحد {PROJECT_FILE_MAX_MB}MB للملف</span>
+        <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" className="sr-only"
+          onChange={e => { addFiles([...e.target.files]); e.target.value = ''; }} />
+      </label>
+
+      {(files.length > 0 || pending.length > 0) && (
+        <div className="space-y-1.5">
+          {files.map(doc => (
+            <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg">
+              <DocIcon name={doc.file_name} />
+              <button type="button" onClick={() => openDocument(propertyId, doc)} className="flex-1 min-w-0 text-right text-xs text-gray-200 hover:text-blue-400 truncate">{doc.file_name}</button>
+              <button type="button" title="حذف" onClick={() => confirm(`حذف ${doc.file_name}؟`) && deleteMut.mutate(doc.id)} className="p-1 text-gray-500 hover:text-red-400"><X size={13}/></button>
+            </div>
+          ))}
+          {pending.map((file, i) => (
+            <div key={`${file.name}-${i}`} className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg">
+              <DocIcon name={file.name} />
+              <span className="flex-1 min-w-0 text-xs text-gray-200 truncate">{file.name}</span>
+              <span className="text-xs text-gray-500 shrink-0">بينرفع مع الحفظ</span>
+              <button type="button" title="إزالة" onClick={() => onPendingChange(pending.filter((_, j) => j !== i))} className="p-1 text-gray-500 hover:text-red-400"><X size={13}/></button>
             </div>
           ))}
         </div>
@@ -1174,26 +1318,26 @@ function PropertyDetail({ id, onClose }) {
       )}
 
       {/* ─── المستندات ─── */}
-      {p.documents?.length > 0 && (
-        <div className="mt-4">
-          <SectionTitle>المستندات المرفقة ({p.documents.length})</SectionTitle>
-          <div className="grid grid-cols-2 gap-2">
-            {p.documents.map(doc => (
-              <a key={doc.id}
-                href={doc.file_url || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 p-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
-                <Home size={14} className="text-blue-400 flex-shrink-0"/>
+      {[
+        [PROJECT_FILE, p.documents?.filter(d => d.type === PROJECT_FILE)],
+        ['المستندات المرفقة', p.documents?.filter(d => d.type !== PROJECT_FILE)],
+      ].map(([title, docs]) => docs?.length > 0 && (
+        <div key={title} className="mt-4">
+          <SectionTitle>{title} ({docs.length})</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {docs.map(doc => (
+              <button key={doc.id} type="button" onClick={() => openDocument(p.id, doc)}
+                className="flex items-center gap-2 p-2 text-right bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
+                <DocIcon name={doc.file_name} />
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-gray-200 truncate">{doc.type}</p>
                   <p className="text-xs text-gray-500 truncate">{doc.file_name}</p>
                 </div>
-              </a>
+              </button>
             ))}
           </div>
         </div>
-      )}
+      ))}
     </Modal>
   );
 }
