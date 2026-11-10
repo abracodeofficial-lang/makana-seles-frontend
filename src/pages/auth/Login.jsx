@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import { authApi } from '../../api/services';
 import { Btn, Input } from '../../components/ui';
@@ -34,9 +34,20 @@ export default function Login() {
   const [form, setForm]     = useState({ email: readStored('remember-email') || '', password: '' });
   const [remember, setRemember] = useState(readStored('remember-me') !== '0');
   const [loading, setLoading] = useState(false);
-  const [mode, setMode]     = useState('login'); // login | forgot | sent
+  const [mode, setMode]     = useState('login'); // login | forgot | code
+  const [sent, setSent]     = useState(null);    // {phone, resend_after}
+  const [reset, setReset]   = useState({ code: '', password: '', password_confirmation: '' });
+  const [resetError, setResetError] = useState('');
+  const [cooldown, setCooldown] = useState(0);
   const { login }  = useAuthStore();
   const navigate   = useNavigate();
+
+  // عدّاد إعادة إرسال الكود
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,27 +65,91 @@ export default function Login() {
   };
 
   const handleForgot = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setLoading(true);
     try {
-      await authApi.forgotPassword(form.email);
-      setMode('sent');
+      const { data } = await authApi.forgotPassword(form.email);
+      setSent(data.data);
+      setCooldown(data.data.resend_after || 60);
+      setReset(r => ({ ...r, code: '' }));
+      setResetError('');
+      setMode('code');
+      toast.success('بعتنالك كود على الواتساب');
     } catch {}
     finally { setLoading(false); }
   };
 
-  if (mode === 'sent') {
+  const handleReset = async (e) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(reset.code)) return setResetError('الكود 6 أرقام');
+    if (reset.password.length < 8) return setResetError('كلمة المرور لازم تكون 8 أحرف على الأقل');
+    if (reset.password !== reset.password_confirmation) return setResetError('تأكيد كلمة المرور مش مطابق');
+    setResetError('');
+    setLoading(true);
+    try {
+      await authApi.resetPassword({ email: form.email, ...reset });
+      toast.success('تم تغيير كلمة المرور، سجّل دخولك');
+      setForm(f => ({ ...f, password: '' }));
+      setReset({ code: '', password: '', password_confirmation: '' });
+      setMode('login');
+    } catch (err) {
+      setResetError(err.response?.data?.message || '');
+    }
+    finally { setLoading(false); }
+  };
+
+  if (mode === 'code') {
     return (
       <AuthShell>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4 text-center">
-          <p className="text-4xl">📧</p>
-          <p className="text-sm text-gray-200 leading-relaxed">
-            بعتنالك رابط تعيين كلمة المرور على <span dir="ltr" className="font-semibold">{form.email}</span>. الرابط صالح لمدة ساعة.
-          </p>
-          <p className="text-xs text-gray-500">ما وصلك؟ شيك على مجلد الرسائل غير المرغوب فيها (Spam).</p>
-          <Btn variant="outline" loading={loading} className="w-full justify-center" onClick={handleForgot}>إعادة الإرسال</Btn>
-          <button type="button" className={linkClass} onClick={() => setMode('login')}>رجوع لتسجيل الدخول</button>
-        </div>
+        <form onSubmit={handleReset} className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
+          <div>
+            <p className="text-sm font-bold text-gray-100">تعيين كلمة مرور جديدة</p>
+            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+              بعتنالك كود من 6 أرقام على الواتساب للرقم المنتهي بـ <span dir="ltr" className="font-semibold text-gray-200">{sent?.phone?.replace('…', '')}</span>. الكود صالح 10 دقائق.
+            </p>
+          </div>
+          <Input
+            label="الكود"
+            dir="ltr"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            placeholder="______"
+            className="text-center tracking-[0.5em] font-bold"
+            value={reset.code}
+            onChange={e => setReset({ ...reset, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+            required
+            autoFocus
+          />
+          <Input
+            label="كلمة المرور الجديدة"
+            type="password"
+            autoComplete="new-password"
+            placeholder="8 أحرف على الأقل"
+            value={reset.password}
+            onChange={e => setReset({ ...reset, password: e.target.value })}
+            required
+          />
+          <Input
+            label="تأكيد كلمة المرور"
+            type="password"
+            autoComplete="new-password"
+            value={reset.password_confirmation}
+            onChange={e => setReset({ ...reset, password_confirmation: e.target.value })}
+            error={resetError}
+            required
+          />
+          <Btn type="submit" loading={loading} className="w-full justify-center">
+            حفظ كلمة المرور
+          </Btn>
+          <div className="flex items-center justify-between gap-2">
+            <button type="button" className={`${linkClass} disabled:opacity-50 disabled:no-underline disabled:cursor-default`}
+              disabled={cooldown > 0 || loading} onClick={handleForgot}>
+              {cooldown > 0 ? `إعادة إرسال الكود بعد ${cooldown} ث` : 'ما وصلك؟ إعادة إرسال الكود'}
+            </button>
+            <button type="button" className={linkClass} onClick={() => setMode('login')}>رجوع لتسجيل الدخول</button>
+          </div>
+        </form>
       </AuthShell>
     );
   }
@@ -85,7 +160,7 @@ export default function Login() {
         <form onSubmit={handleForgot} className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
           <div>
             <p className="text-sm font-bold text-gray-100">نسيت كلمة المرور؟</p>
-            <p className="text-xs text-gray-500 mt-1">اكتب إيميلك وبنبعتلك رابط تعيّن فيه كلمة مرور جديدة.</p>
+            <p className="text-xs text-gray-500 mt-1">اكتب إيميلك وبنبعتلك كود على واتساب رقمك المسجل عندنا.</p>
           </div>
           <Input
             label="البريد الإلكتروني"
@@ -98,7 +173,7 @@ export default function Login() {
             autoFocus
           />
           <Btn type="submit" loading={loading} className="w-full justify-center">
-            إرسال رابط الاستعادة
+            إرسال الكود على الواتساب
           </Btn>
           <div className="text-center">
             <button type="button" className={linkClass} onClick={() => setMode('login')}>رجوع لتسجيل الدخول</button>
@@ -142,81 +217,6 @@ export default function Login() {
         <Btn type="submit" loading={loading} className="w-full justify-center">
           تسجيل الدخول
         </Btn>
-      </form>
-    </AuthShell>
-  );
-}
-
-// صفحة الرابط اللي بيوصل عالإيميل: /reset-password?token=...&email=...
-export function ResetPassword() {
-  const [params] = useSearchParams();
-  const navigate = useNavigate();
-  const token = params.get('token') || '';
-  const email = params.get('email') || '';
-  const [form, setForm] = useState({ password: '', password_confirmation: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (form.password.length < 8) return setError('كلمة المرور لازم تكون 8 أحرف على الأقل');
-    if (form.password !== form.password_confirmation) return setError('تأكيد كلمة المرور مش مطابق');
-    setError('');
-    setLoading(true);
-    try {
-      await authApi.resetPassword({ token, email, ...form });
-      // الجلسات القديمة انلغت بالسيرفر
-      localStorage.removeItem('token');
-      useAuthStore.setState({ token: null, employee: null, permissions: {} });
-      toast.success('تم تغيير كلمة المرور، سجّل دخولك');
-      navigate('/login', { replace: true });
-    } catch {}
-    finally { setLoading(false); }
-  };
-
-  if (!token || !email) {
-    return (
-      <AuthShell>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4 text-center">
-          <p className="text-sm text-gray-200">الرابط ناقص. افتح الرابط كامل من الإيميل، أو اطلب رابط جديد.</p>
-          <Link to="/login" className={linkClass}>رجوع لتسجيل الدخول</Link>
-        </div>
-      </AuthShell>
-    );
-  }
-
-  return (
-    <AuthShell>
-      <form onSubmit={handleSubmit} className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
-        <div>
-          <p className="text-sm font-bold text-gray-100">تعيين كلمة مرور جديدة</p>
-          <p className="text-xs text-gray-500 mt-1" dir="ltr">{email}</p>
-        </div>
-        <Input
-          label="كلمة المرور الجديدة"
-          type="password"
-          autoComplete="new-password"
-          placeholder="8 أحرف على الأقل"
-          value={form.password}
-          onChange={e => setForm({ ...form, password: e.target.value })}
-          required
-          autoFocus
-        />
-        <Input
-          label="تأكيد كلمة المرور"
-          type="password"
-          autoComplete="new-password"
-          value={form.password_confirmation}
-          onChange={e => setForm({ ...form, password_confirmation: e.target.value })}
-          error={error}
-          required
-        />
-        <Btn type="submit" loading={loading} className="w-full justify-center">
-          حفظ كلمة المرور
-        </Btn>
-        <div className="text-center">
-          <Link to="/login" className={linkClass}>رجوع لتسجيل الدخول</Link>
-        </div>
       </form>
     </AuthShell>
   );

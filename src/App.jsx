@@ -4,7 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { lazy, Suspense } from 'react';
 import useAuthStore from './store/authStore';
 import Layout from './components/layout/Layout';
-import Login, { ProtectedRoute, ResetPassword } from './pages/auth/Login';
+import Login, { ProtectedRoute } from './pages/auth/Login';
 import { Loading } from './components/ui';
 
 const OwnersPage       = lazy(() => import('./pages/owners/OwnersPage'));
@@ -95,8 +95,6 @@ export default function App() {
 
         <Routes>
           <Route path="/login" element={token ? <Navigate to="/" /> : <Login />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/" element={<Dashboard />} />
 
