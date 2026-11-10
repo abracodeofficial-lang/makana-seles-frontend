@@ -3,6 +3,16 @@ import { persist } from 'zustand/middleware';
 import { authApi } from '../api/services';
 import { disablePush } from '../lib/push';
 
+// "تذكرني" مش معلّم: الجلسة بتخلص لما يتسكّر المتصفح.
+// كوكي الجلسة (بدون تاريخ انتهاء) بينمسح مع إغلاق المتصفح وبيضل مشترك بين التبويبات
+const SESSION_COOKIE = 'session-alive=1';
+try {
+  if (localStorage.getItem('remember-me') === '0' && !document.cookie.split('; ').includes(SESSION_COOKIE)) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('auth-store');
+  }
+} catch {}
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -10,9 +20,11 @@ const useAuthStore = create(
       employee:    null,
       permissions: {},
 
-      login: async (credentials) => {
+      login: async (credentials, remember = true) => {
         const { data } = await authApi.login(credentials);
         localStorage.setItem('token', data.data.token);
+        localStorage.setItem('remember-me', remember ? '1' : '0');
+        document.cookie = `${SESSION_COOKIE}; path=/; SameSite=Lax`;
         set({
           token:       data.data.token,
           employee:    data.data.employee,

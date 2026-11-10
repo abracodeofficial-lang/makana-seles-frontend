@@ -28,8 +28,11 @@ function AuthShell({ children }) {
 
 const linkClass = 'text-xs text-blue-400 hover:text-blue-300 hover:underline';
 
+const readStored = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
+
 export default function Login() {
-  const [form, setForm]     = useState({ email: '', password: '' });
+  const [form, setForm]     = useState({ email: readStored('remember-email') || '', password: '' });
+  const [remember, setRemember] = useState(readStored('remember-me') !== '0');
   const [loading, setLoading] = useState(false);
   const [mode, setMode]     = useState('login'); // login | forgot | sent
   const { login }  = useAuthStore();
@@ -39,7 +42,11 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(form);
+      await login(form, remember);
+      try {
+        if (remember) localStorage.setItem('remember-email', form.email);
+        else localStorage.removeItem('remember-email');
+      } catch {}
       toast.success('أهلاً بك!');
       navigate('/');
     } catch {}
@@ -106,6 +113,8 @@ export default function Login() {
         <Input
           label="البريد الإلكتروني"
           type="email"
+          name="email"
+          autoComplete="username"
           placeholder="name@makanasa.com"
           value={form.email}
           onChange={e => setForm({ ...form, email: e.target.value })}
@@ -114,12 +123,19 @@ export default function Login() {
         <Input
           label="كلمة المرور"
           type="password"
+          name="password"
+          autoComplete="current-password"
           placeholder="••••••••"
           value={form.password}
           onChange={e => setForm({ ...form, password: e.target.value })}
           required
         />
-        <div className="text-left -mt-2">
+        <div className="flex items-center justify-between gap-2 -mt-1">
+          <label className="inline-flex items-center gap-2 text-xs text-gray-300 cursor-pointer select-none">
+            <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
+              className="w-4 h-4 rounded accent-blue-600 cursor-pointer" />
+            تذكرني
+          </label>
           <button type="button" className={linkClass} onClick={() => setMode('forgot')}>نسيت كلمة المرور؟</button>
         </div>
         <Btn type="submit" loading={loading} className="w-full justify-center">

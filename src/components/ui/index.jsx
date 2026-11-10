@@ -1,5 +1,5 @@
 import { Children, cloneElement, isValidElement, useState, useRef, useLayoutEffect } from 'react';
-import { Loader2, AlertCircle, X, ChevronDown } from 'lucide-react';
+import { Loader2, AlertCircle, X, ChevronDown, Eye, EyeOff } from 'lucide-react';
 
 export function Btn({ children, variant = 'primary', size = 'md', loading, className = '', ...props }) {
   const base  = 'inline-flex items-center gap-1.5 font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-[Cairo] whitespace-nowrap';
@@ -63,14 +63,28 @@ export function StatCard({ label, value, icon, color = 'blue' }) {
   );
 }
 
-export function Input({ label, error, className = '', ...props }) {
+export function Input({ label, error, className = '', type, ...props }) {
+  // خانات كلمة المرور فيها زر عين لإظهار/إخفاء اللي انكتب
+  const [shown, setShown] = useState(false);
+  const isPassword = type === 'password';
+
   return (
     <div className="space-y-1">
       {label && <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</label>}
-      <input
-        className={`w-full bg-gray-800 border ${error ? 'border-red-500' : 'border-gray-700'} rounded-lg px-3 py-2.5 h-[42px] text-sm text-gray-100 outline-none focus:border-blue-500 transition-colors placeholder:text-gray-600 ${className}`}
-        {...props}
-      />
+      <div className="relative">
+        <input
+          type={isPassword && shown ? 'text' : type}
+          className={`w-full bg-gray-800 border ${error ? 'border-red-500' : 'border-gray-700'} rounded-lg px-3 py-2.5 h-[42px] text-sm text-gray-100 outline-none focus:border-blue-500 transition-colors placeholder:text-gray-600 ${isPassword ? 'pl-10' : ''} ${className}`}
+          {...props}
+        />
+        {isPassword && (
+          <button type="button" onClick={() => setShown(s => !s)}
+            title={shown ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'} aria-label={shown ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+            className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-500 hover:text-gray-200">
+            {shown ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        )}
+      </div>
       {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   );
