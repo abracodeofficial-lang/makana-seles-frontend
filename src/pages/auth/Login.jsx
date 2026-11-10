@@ -69,9 +69,10 @@ export default function Login() {
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4 text-center">
           <p className="text-4xl">📧</p>
           <p className="text-sm text-gray-200 leading-relaxed">
-            إذا الإيميل <span dir="ltr" className="font-semibold">{form.email}</span> مسجل عنا، رح يوصلك رابط لتعيين كلمة مرور جديدة خلال دقائق.
+            بعتنالك رابط تعيين كلمة المرور على <span dir="ltr" className="font-semibold">{form.email}</span>. الرابط صالح لمدة ساعة.
           </p>
           <p className="text-xs text-gray-500">ما وصلك؟ شيك على مجلد الرسائل غير المرغوب فيها (Spam).</p>
+          <Btn variant="outline" loading={loading} className="w-full justify-center" onClick={handleForgot}>إعادة الإرسال</Btn>
           <button type="button" className={linkClass} onClick={() => setMode('login')}>رجوع لتسجيل الدخول</button>
         </div>
       </AuthShell>

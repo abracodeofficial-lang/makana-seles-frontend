@@ -19,6 +19,7 @@ client.interceptors.response.use(
     const message = error.response?.data?.message;
     if (status === 401) { localStorage.removeItem('token'); window.location.href = '/login'; }
     else if (status === 403) toast.error('ليس لديك صلاحية لهذا الإجراء');
+    else if (status === 503 && message) toast.error(message); // خدمة مش متاحة (مثل الإيميل) — رسالتنا العربية
     else if (status >= 500) toast.error('خطأ في الخادم، يرجى المحاولة لاحقاً');
     else if (message)       toast.error(message);
     return Promise.reject(error);
