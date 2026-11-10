@@ -171,7 +171,7 @@ export default function EmployeesPage() {
 
 // ── Wizard إضافة موظف (3 خطوات) ──────────────────────────────
 const WIZARD_DEFAULTS = {
-  full_name: '', national_id: '', phone: '', email: '', password: '',
+  full_name: '', national_id: '', phone: '', whatsapp: '', email: '', password: '',
   address: '', marital_status: '',
   department_id: '', job_title: '', contract_type_id: '', shift_id: '', hire_date: '',
   basic_salary: '', housing_allowance: '', transport_allowance: '',
@@ -215,7 +215,7 @@ function EmployeeWizard({ hrLookup, onClose, onSaved }) {
       const errors = err.response?.data?.errors;
       if (errors) {
         setFieldErrors(errors);
-        const step0Fields = ['full_name','national_id','phone','email','password','address','marital_status'];
+        const step0Fields = ['full_name','national_id','phone','whatsapp','email','password','address','marital_status'];
         const step1Fields = ['department_id','job_title','contract_type_id','shift_id','hire_date'];
         const keys = Object.keys(errors);
         if (keys.some(k => step0Fields.includes(k))) setStep(0);
@@ -270,6 +270,7 @@ function EmployeeWizard({ hrLookup, onClose, onSaved }) {
           <div><Input label="الاسم الكامل *"       value={form.full_name}      onChange={e => set('full_name', e.target.value)} /><ErrMsg field="full_name"/></div>
           <div><Input label="رقم الهوية *"         value={form.national_id}    onChange={e => set('national_id', e.target.value)} /><ErrMsg field="national_id"/></div>
           <div><Input dir="ltr" label="رقم الهاتف *"         value={form.phone}          onChange={e => set('phone', e.target.value)} /><ErrMsg field="phone"/></div>
+          <div><Input dir="ltr" label="رقم الواتساب" placeholder="فاضي = نفس رقم الهاتف" value={form.whatsapp} onChange={e => set('whatsapp', e.target.value)} /><ErrMsg field="whatsapp"/></div>
           <div><Input label="البريد الإلكتروني *"  value={form.email}          onChange={e => set('email', e.target.value)} type="email" /><ErrMsg field="email"/></div>
           <div><Input label="كلمة المرور *"        value={form.password}       onChange={e => set('password', e.target.value)} type="password" /><ErrMsg field="password"/></div>
           <div>
@@ -498,6 +499,7 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="الاسم الكامل"       value={editForm.full_name || ''}   onChange={e => set('full_name', e.target.value)} />
                 <Input dir="ltr" label="رقم الهاتف"          value={editForm.phone || ''}       onChange={e => set('phone', e.target.value)} />
+                <Input dir="ltr" label="رقم الواتساب (لكود استعادة كلمة المرور)" placeholder="+9665XXXXXXXX" value={editForm.whatsapp || ''} onChange={e => set('whatsapp', e.target.value)} />
                 <Input label="البريد الإلكتروني"   value={editForm.email || ''}       onChange={e => set('email', e.target.value)} type="email" />
                 <Select label="الحالة الاجتماعية *" value={editForm.marital_status || ''} onChange={e => set('marital_status', e.target.value)}
                   options={[{ value: '', label: 'اختر...' }, ...['أعزب','متزوج','مطلق','أرمل'].map(v => ({ value: v, label: v }))]} />
@@ -516,6 +518,7 @@ function EmployeeProfile({ id, hrLookup, onClose, onSaved, initialEditMode = fal
                   <InfoRow label="الاسم"             value={emp.full_name} />
                   <InfoRow label="رقم الهوية"        value={emp.national_id} />
                   <InfoRow label="الهاتف"            value={<PhoneText value={emp.phone} />} />
+                  <InfoRow label="الواتساب"          value={emp.whatsapp ? <PhoneText value={emp.whatsapp} /> : null} />
                   <InfoRow label="البريد"            value={emp.email} />
                   <InfoRow label="الحالة الاجتماعية" value={emp.marital_status} />
                   <InfoRow label="العنوان"           value={emp.address} />
