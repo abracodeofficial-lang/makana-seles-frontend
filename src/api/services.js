@@ -6,6 +6,8 @@ export const authApi = {
   logout:         ()     => client.post('/auth/logout'),
   me:             ()     => client.get('/auth/me'),
   changePassword: (data) => client.post('/auth/change-password', data),
+  forgotPassword: (email) => client.post('/auth/forgot-password', { email }),
+  resetPassword:  (data) => client.post('/auth/reset-password', data),
 };
 
 // ── سجل العمليات (للأدمن فقط)
