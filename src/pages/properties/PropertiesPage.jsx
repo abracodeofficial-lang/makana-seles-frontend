@@ -126,7 +126,8 @@ export default function PropertiesPage() {
 
       const rows = records.map(p => ({
         'الكود':          p.property_code,
-        'كود عقار تجريبي': p.trial_property_code || '—',
+        'الكود التجريبي': p.trial_property_code || '—',
+        'تاريخ النشر التجريبي': p.trial_publish_date || '—',
         'الاسم':          p.name,
         'نوع العقار':      p.property_type?.name || '—',
         'المالك':         p.owner?.name || '—',
@@ -464,6 +465,7 @@ const TAB_RULES = {
     net_price:        negative(f.net_price) && 'السعر ما بيصير سالب',
     total_area_text:  tooLong(f.total_area_text, 50) && 'المساحة طويلة (50 حرف كحد أقصى)',
     trial_property_code: tooLong(f.trial_property_code, 50) && 'الكود طويل (50 حرف كحد أقصى)',
+    trial_publish_date: tooLong(f.trial_publish_date, 100) && 'النص طويل (100 حرف كحد أقصى)',
     license_number:   tooLong(f.license_number, 50) && 'رقم الترخيص طويل (50 حرف كحد أقصى)',
   }),
   location: (f) => ({
@@ -742,7 +744,8 @@ function PropertyForm({ open, onClose, editing, draft, draftOwner, onSaveDraft, 
           <Input error={errors.name} label="اسم العقار *"    value={form.name}        onChange={e => set('name', e.target.value)} />
           <Select error={errors.property_type_id} label="نوع العقار *"   value={form.property_type_id ? String(form.property_type_id) : ''} onChange={e => set('property_type_id', e.target.value)}
             options={propertyTypeOptions} />
-          <Input error={errors.trial_property_code} label="كود عقار تجريبي" value={form.trial_property_code || ''} onChange={e => set('trial_property_code', e.target.value)} dir="ltr" />
+          <Input error={errors.trial_property_code} label="الكود التجريبي" value={form.trial_property_code || ''} onChange={e => set('trial_property_code', e.target.value)} dir="ltr" />
+          <Input error={errors.trial_publish_date} label="تاريخ النشر التجريبي" placeholder="مثال: 15/11/2026" value={form.trial_publish_date || ''} onChange={e => set('trial_publish_date', e.target.value)} />
           <Select label="نوع التسويق"    value={form.marketing_type_id} onChange={e => set('marketing_type_id', e.target.value)}
             options={[{value:'1',label:'ملاك أفراد'},{value:'2',label:'مزادات'},{value:'3',label:'مشاريع على الخارطة'},{value:'4',label:'مشاريع جاهزة'}]} />
           <Select label="الاستخدام"      value={form.usage_type_id} onChange={e => set('usage_type_id', e.target.value)}
@@ -1230,7 +1233,8 @@ function PropertyDetail({ id, onClose }) {
           <InfoRow label="نوع التسويق"  value={p.marketing_type?.name} />
           <InfoRow label="عقد الوساطة"   value={p.has_brokerage_contract ? 'تم ✓' : 'لا'}
             valueClass={p.has_brokerage_contract ? 'text-green-400' : 'text-gray-400'} />
-          <InfoRow label="كود عقار تجريبي" value={p.trial_property_code} />
+          <InfoRow label="الكود التجريبي" value={p.trial_property_code} />
+          <InfoRow label="تاريخ النشر التجريبي" value={p.trial_publish_date} />
           <InfoRow label="رقم الترخيص"   value={p.license_number} />
           <InfoRow label="المساحة"       value={formatArea(p) ? `${formatArea(p)} م²` : null} />
           <InfoRow label="الغرف"         value={p.rooms_count} />

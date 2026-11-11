@@ -224,7 +224,8 @@ function SalesReports() {
     file: `properties-${filters.from}-${filters.to}.xlsx`,
     mapRow: p => ({
       'الكود':         p.property_code,
-      'كود عقار تجريبي': p.trial_property_code || '—',
+      'الكود التجريبي': p.trial_property_code || '—',
+      'تاريخ النشر التجريبي': p.trial_publish_date || '—',
       'الاسم':         p.name,
       'نوع العقار':    p.property_type?.name || '—',
       'المالك':        p.owner?.name || '—',
