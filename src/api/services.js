@@ -66,6 +66,7 @@ export const publishingApi = {
   settings:      ()        => client.get('/publishing/settings'),
   updateSettings: (data)   => client.put('/publishing/settings', data),
   regenerateFeedToken: ()  => client.post('/publishing/settings/regenerate-feed-token'),
+  testWordpress:       ()  => client.post('/publishing/settings/test-wordpress'),
 };
 
 // ── LEADS

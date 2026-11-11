@@ -142,6 +142,14 @@ function SettingsModal({ onClose }) {
     },
   });
 
+  const [testResult, setTestResult] = useState(null);
+  const testMut = useMutation({
+    mutationFn: () => publishingApi.testWordpress(),
+    onMutate:   () => setTestResult(null),
+    onSuccess:  (r) => setTestResult({ ok: true, message: r.data.message, info: r.data.data }),
+    onError:    (err) => setTestResult({ ok: false, message: err.response?.data?.message || 'تعذّر الاتصال' }),
+  });
+
   const tokenMut = useMutation({
     mutationFn: () => publishingApi.regenerateFeedToken(),
     onSuccess: () => { toast.success('تم تغيير التوكن'); qc.invalidateQueries({ queryKey: ['publishing-settings'] }); },
@@ -165,6 +173,23 @@ function SettingsModal({ onClose }) {
             <Input dir="ltr" label="اسم المستخدم" autoComplete="off" value={form.wordpress_username || ''} onChange={e => set('wordpress_username', e.target.value)} />
             <Input dir="ltr" type="password" autoComplete="new-password" label={form.has_password ? 'Application Password (محفوظة — اكتب بس لتغييرها)' : 'Application Password'}
               value={form.wordpress_app_password} onChange={e => set('wordpress_app_password', e.target.value)} />
+            <div className="flex items-center gap-2">
+              <Btn size="sm" variant="outline" loading={testMut.isPending} onClick={() => testMut.mutate()}>🔌 اختبار الاتصال</Btn>
+              <span className="text-xs text-gray-500">بيفحص الإعدادات المحفوظة — احفظ أول إذا غيّرت شي</span>
+            </div>
+            {testResult && (
+              <div className={`text-sm rounded-lg p-3 border ${testResult.ok ? 'border-green-700 bg-green-950/40 text-green-300' : 'border-red-700 bg-red-950/40 text-red-300'}`}>
+                <p className="font-medium">{testResult.message}</p>
+                {testResult.info && (
+                  <div className="mt-2 space-y-1 text-xs text-gray-300">
+                    <p>الموقع: {testResult.info.site} — المستخدم: <span dir="ltr">{testResult.info.user}</span> — الإضافة v{testResult.info.version}</p>
+                    {(testResult.info.types || []).map(t => (
+                      <p key={t.slug}>• {t.title} <span className="text-gray-500" dir="ltr">({t.slug})</span>: {Object.keys(t.mapped || {}).length ? Object.keys(t.mapped).join('، ') : 'ما انربط ولا حقل تلقائياً'}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="p-4 rounded-xl border border-gray-700 space-y-3">
