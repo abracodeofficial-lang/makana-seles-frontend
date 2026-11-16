@@ -143,7 +143,7 @@ export default function LeadsPage() {
         'الصفة':            l.applicant_type,
         'نوع العقار':        l.property_type?.name || '—',
         'الاتجاه':          l.direction || '—',
-        'تاريخ النشر التجريبي': l.trial_publish_date || '—',
+        'تاريخ الإضافة التجريبي': l.trial_added_date || '—',
         'الميزانية':        l.budget,
         'فئة السعر':        l.price_category || '—',
         'درجة الاهتمام':    l.seriousness_level ? `${l.seriousness_level}/4` : '—',
@@ -555,8 +555,8 @@ function LeadForm({ open, onClose, editing }) {
           options={propertyTypes.map(t => ({ value: String(t.id), label: t.name }))} />
         <Select label="الاتجاه"          value={form.direction || ''} onChange={e => set('direction', e.target.value)}
           options={DIRECTIONS.map(v => ({ value: v, label: v }))} />
-        <Input  label="تاريخ النشر التجريبي" placeholder="مثال: 15/11/2026" maxLength={100}
-          value={form.trial_publish_date || ''} onChange={e => set('trial_publish_date', e.target.value)} />
+        <Input  label="تاريخ الإضافة التجريبي" placeholder="مثال: 15/11/2026" maxLength={100}
+          value={form.trial_added_date || ''} onChange={e => set('trial_added_date', e.target.value)} />
         <Select label="موظف الأوبريشن"  value={form.operation_employee_id} onChange={e => set('operation_employee_id', e.target.value)}
           options={operationEmployeeOptions} />
         <MoneyInput  label="الميزانية (ريال)" value={form.budget || ''}     onChange={e => set('budget', e.target.value)} />
@@ -659,7 +659,7 @@ function LeadDetail({ id, onClose }) {
       <InfoRow label="المصدر"          value={l.source} />
       <InfoRow label="الميزانية"       value={l.budget ? `${Number(l.budget).toLocaleString('en-US')} ريال` : '—'} valueClass="text-blue-400" />
       <InfoRow label="هدف الشراء"     value={l.purchase_goal} />
-      <InfoRow label="تاريخ النشر التجريبي" value={l.trial_publish_date} />
+      <InfoRow label="تاريخ الإضافة التجريبي" value={l.trial_added_date} />
       <InfoRow label="موظف الأوبريشن" value={l.operation_employee?.full_name} />
       <InfoRow label="حالة التحديث"   value={l.update_status ? `${l.update_status}${l.update_date ? ' · ' + formatDate(l.update_date) : ''}` : null} />
       {l.request_status !== 'مغلق' && l.follow_up_date && (
