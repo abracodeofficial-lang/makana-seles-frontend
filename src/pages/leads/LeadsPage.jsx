@@ -143,7 +143,7 @@ export default function LeadsPage() {
         'الصفة':            l.applicant_type,
         'نوع العقار':        l.property_type?.name || '—',
         'الاتجاه':          l.direction || '—',
-        'تاريخ الإضافة التجريبي': l.trial_added_date || '—',
+        'تاريخ الإضافة التجريبي': l.trial_added_date ? String(l.trial_added_date).slice(0, 10) : '—',
         'الميزانية':        l.budget,
         'فئة السعر':        l.price_category || '—',
         'درجة الاهتمام':    l.seriousness_level ? `${l.seriousness_level}/4` : '—',
@@ -509,6 +509,7 @@ function LeadForm({ open, onClose, editing }) {
         operation_employee_id: editing.operation_employee_id != null ? String(editing.operation_employee_id) : '',
         follow_up_date: toDateInput(editing.follow_up_date),
         update_date:    toDateInput(editing.update_date),
+        trial_added_date: toDateInput(editing.trial_added_date),
         properties: editing.properties || [],
       } : LEAD_DEFAULTS);
     }
@@ -555,7 +556,7 @@ function LeadForm({ open, onClose, editing }) {
           options={propertyTypes.map(t => ({ value: String(t.id), label: t.name }))} />
         <Select label="الاتجاه"          value={form.direction || ''} onChange={e => set('direction', e.target.value)}
           options={DIRECTIONS.map(v => ({ value: v, label: v }))} />
-        <Input  label="تاريخ الإضافة التجريبي" placeholder="مثال: 15/11/2026" maxLength={100}
+        <Input  label="تاريخ الإضافة التجريبي" type="date" min="2000-01-01" max={todayISO()}
           value={form.trial_added_date || ''} onChange={e => set('trial_added_date', e.target.value)} />
         <Select label="موظف الأوبريشن"  value={form.operation_employee_id} onChange={e => set('operation_employee_id', e.target.value)}
           options={operationEmployeeOptions} />
@@ -659,7 +660,7 @@ function LeadDetail({ id, onClose }) {
       <InfoRow label="المصدر"          value={l.source} />
       <InfoRow label="الميزانية"       value={l.budget ? `${Number(l.budget).toLocaleString('en-US')} ريال` : '—'} valueClass="text-blue-400" />
       <InfoRow label="هدف الشراء"     value={l.purchase_goal} />
-      <InfoRow label="تاريخ الإضافة التجريبي" value={l.trial_added_date} />
+      <InfoRow label="تاريخ الإضافة التجريبي" value={l.trial_added_date ? formatDate(l.trial_added_date) : null} />
       <InfoRow label="موظف الأوبريشن" value={l.operation_employee?.full_name} />
       <InfoRow label="حالة التحديث"   value={l.update_status ? `${l.update_status}${l.update_date ? ' · ' + formatDate(l.update_date) : ''}` : null} />
       {l.request_status !== 'مغلق' && l.follow_up_date && (
