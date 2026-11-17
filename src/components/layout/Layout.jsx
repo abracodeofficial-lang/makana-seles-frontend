@@ -9,7 +9,7 @@ import { Avatar } from '../ui';
 import {
   Home, Building2, Users, UserCheck, Clock, Calendar,
   FileCheck, Bell, BellRing, MessageCircle, LogOut, Menu, X, Fingerprint, Settings, BarChart2, ShieldCheck,
-  Sun, Moon, Trash2, History, Send, ImageDown,
+  Sun, Moon, Trash2, History, Send, ImageDown, Palette, ChevronDown,
 } from 'lucide-react';
 import { useTheme } from '../../lib/theme';
 
@@ -37,13 +37,22 @@ const NAV = [
   { label: 'بصمتي',            path: '/punch',         icon: Fingerprint, section: 'الموارد البشرية' },
   { label: 'الإجازات',         path: '/leaves',        icon: Calendar,    section: 'الموارد البشرية', perm: 'leave_requests' },
   { label: 'الإذونات',         path: '/permissions',   icon: FileCheck,   section: 'الموارد البشرية', perm: 'permissions' },
-  { label: 'الأدوار والصلاحيات',path: '/roles',        icon: ShieldCheck, section: 'الموارد البشرية', perm: 'roles' },
   { label: 'الإشعارات',        path: '/notifications', icon: Bell,        section: null },
-  { label: 'التقارير',         path: '/reports',       icon: BarChart2,   section: null, perm: 'reports'  },
-  { label: 'الإعدادات',        path: '/settings',      icon: Settings,    section: null, perm: 'settings' },
-  { label: 'سجل العمليات',     path: '/audit-log',     icon: History,     section: null, adminOnly: true },
-  { label: 'المحذوفات',        path: '/trash',         icon: Trash2,      section: null, adminOnly: true },
+  { label: 'التقارير',         path: '/reports',       icon: BarChart2,   section: 'الإدارة', perm: 'reports'  },
+  { label: 'الأدوار والصلاحيات',path: '/roles',        icon: ShieldCheck, section: 'الإدارة', perm: 'roles' },
+  { label: 'الإعدادات',        path: '/settings',      icon: Settings,    section: 'الإدارة', perm: 'settings' },
+  { label: 'سجل العمليات',     path: '/audit-log',     icon: History,     section: 'الإدارة', adminOnly: true },
+  { label: 'المحذوفات',        path: '/trash',         icon: Trash2,      section: 'الإدارة', adminOnly: true },
 ];
+
+// أقسام المنيو المنسدلة بالترتيب (العناصر بدون قسم بتظهر فوق دائماً)
+const SECTIONS = [
+  { key: 'المبيعات',          icon: Building2 },
+  { key: 'التصميم والتسويق',  icon: Palette },
+  { key: 'الموارد البشرية',   icon: Users },
+  { key: 'الإدارة',           icon: Settings },
+];
+const OPEN_KEY = 'nav-open-sections';
 
 // الأدمن بيحدده السيرفر (ونفس الفحص بيحمي مسارات المحذوفات)
 export function useIsAdmin() {
@@ -100,7 +109,40 @@ export default function Layout() {
     return [].concat(item.perm).some(p => permissions?.[p]?.view === true);
   });
 
-  const sections = ['المبيعات', 'التصميم والتسويق', 'الموارد البشرية', null];
+  // الأقسام المفتوحة بتنحفظ بالمتصفح، والقسم يلي فيه الصفحة الحالية بينفتح تلقائياً
+  const [openSections, setOpenSections] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(OPEN_KEY)) || []; } catch { return []; }
+  });
+  const activeSection = visibleNav.find(i => i.path !== '/' && location.pathname.startsWith(i.path))?.section;
+  useEffect(() => {
+    if (activeSection) setOpenSections(s => (s.includes(activeSection) ? s : [...s, activeSection]));
+  }, [activeSection]);
+  useEffect(() => {
+    try { localStorage.setItem(OPEN_KEY, JSON.stringify(openSections)); } catch { /* ignore */ }
+  }, [openSections]);
+  const toggleSection = (key) => setOpenSections(s => (s.includes(key) ? s.filter(k => k !== key) : [...s, key]));
+
+  const renderItem = (item, nested) => (
+    <NavLink
+      key={item.path}
+      to={item.path}
+      end={item.path === '/'}
+      title={item.label}
+      onClick={() => setMobileOpen(false)}
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all
+        ${nested && !collapsed ? 'ps-5' : ''}
+        ${collapsed ? 'md:justify-center md:px-2' : ''}
+        ${isActive
+          ? 'bg-blue-600/20 text-blue-400'
+          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+        }`
+      }
+    >
+      <item.icon size={16} className="flex-shrink-0" />
+      <span className={collapsed ? 'md:hidden' : ''}>{item.label}</span>
+    </NavLink>
+  );
 
   return (
     <div className="flex h-screen bg-gray-950 font-[Cairo] overflow-hidden" dir="rtl">
@@ -146,36 +188,28 @@ export default function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {sections.map(section => {
-            const items = visibleNav.filter(i => i.section === section);
+          {/* عناصر عامة فوق: الرئيسية والإشعارات */}
+          {visibleNav.filter(i => !i.section).map(item => renderItem(item, false))}
+
+          {SECTIONS.map(({ key, icon: SectionIcon }) => {
+            const items = visibleNav.filter(i => i.section === key);
             if (!items.length) return null;
+            const open = openSections.includes(key);
+            const hasActive = activeSection === key;
             return (
-              <div key={section ?? 'general'} className="mb-3">
-                {section && (
-                  <p className={`text-[10px] font-semibold text-gray-600 uppercase tracking-widest px-3 mb-1.5 ${collapsed ? 'md:hidden' : ''}`}>
-                    {section}
-                  </p>
-                )}
-                {items.map(item => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={item.path === '/'}
-                    title={item.label}
-                    onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                      ${collapsed ? 'md:justify-center md:px-2' : ''}
-                      ${isActive
-                        ? 'bg-blue-600/20 text-blue-400'
-                        : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
-                      }`
-                    }
-                  >
-                    <item.icon size={16} className="flex-shrink-0" />
-                    <span className={collapsed ? 'md:hidden' : ''}>{item.label}</span>
-                  </NavLink>
-                ))}
+              <div key={key} className="pt-1">
+                <button type="button" onClick={() => toggleSection(key)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors
+                    ${collapsed ? 'md:hidden' : ''}
+                    ${hasActive && !open ? 'text-blue-400' : 'text-gray-300 hover:bg-gray-800'}`}>
+                  <SectionIcon size={16} className="flex-shrink-0" />
+                  <span className="flex-1 text-start">{key}</span>
+                  <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+                </button>
+                {/* بالمنيو المصغّرة (أيقونات بس) العناصر بتظهر كلها بدون عناوين */}
+                <div className={`${open ? 'block' : 'hidden'} ${collapsed ? 'md:block' : ''} space-y-0.5 mt-0.5`}>
+                  {items.map(item => renderItem(item, true))}
+                </div>
               </div>
             );
           })}
