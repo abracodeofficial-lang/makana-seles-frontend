@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Download, ImagePlus, Trash2, Eye, RefreshCw, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { lazy, Suspense } from 'react';
+import { Download, ImagePlus, Trash2, Eye, RefreshCw, CheckCircle2, AlertTriangle, Loader2, Eraser } from 'lucide-react';
 import { PageHeader } from '../../components/layout/Layout';
 import { Btn, Card, Modal, Select } from '../../components/ui';
 import { compressToWebp, downloadBlob, formatBytes, makeZip, supportsWebpEncode, webpName } from '../../lib/imageCompress';
@@ -20,6 +21,7 @@ const QUALITY_FLOORS = [
   { value: '0.6', label: 'متوازنة (60%+)' },
 ];
 const MAX_FILES = 100;
+const WatermarkEraser = lazy(() => import('./WatermarkEraser'));
 
 let seq = 0;
 
@@ -30,6 +32,7 @@ export default function ImageCompressorPage() {
   const [minQ, setMinQ]         = useState('0.7');
   const [dragging, setDragging] = useState(false);
   const [compare, setCompare]   = useState(null);
+  const [erasing, setErasing]   = useState(null);
   const [zipping, setZipping]   = useState(false);
   const [noWebp, setNoWebp]     = useState(false);
   const inputRef  = useRef(null);
@@ -89,7 +92,18 @@ export default function ImageCompressorPage() {
     if (fresh.length) setItems(list => [...list, ...fresh]);
   };
 
-  const recompressAll = () => setItems(list => list.map(i => ({ ...i, status: 'waiting' })));
+  // بعد إزالة العلامة: الصورة المعدّلة بتصير هي الأصل وبتنضغط من جديد
+  const replaceFile = (id, file) => {
+    setItems(list => list.map(i => {
+      if (i.id !== id) return i;
+      revoke(i);
+      return { ...i, file, origUrl: URL.createObjectURL(file), outUrl: null, result: null, status: 'waiting', edited: true };
+    }));
+    setErasing(null);
+    toast.success('تمت الإزالة — عم نضغط الصورة من جديد');
+  };
+
+  const recompressAll =() => setItems(list => list.map(i => ({ ...i, status: 'waiting' })));
   const remove = (id) => setItems(list => { const it = list.find(i => i.id === id); if (it) revoke(it); return list.filter(i => i.id !== id); });
   const clearAll = () => { items.forEach(revoke); setItems([]); };
 
@@ -180,6 +194,7 @@ export default function ImageCompressorPage() {
                 <Row key={i.id} item={i} targetKb={Number(targetKb)}
                   onRemove={() => remove(i.id)}
                   onCompare={() => setCompare(i)}
+                  onErase={() => setErasing(i)}
                   onDownload={() => downloadBlob(i.result.blob, i.name)} />
               ))}
             </div>
@@ -188,6 +203,11 @@ export default function ImageCompressorPage() {
       </div>
 
       {compare && <CompareModal item={compare} onClose={() => setCompare(null)} />}
+      {erasing && (
+        <Suspense fallback={null}>
+          <WatermarkEraser file={erasing.file} onClose={() => setErasing(null)} onSave={f => replaceFile(erasing.id, f)} />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -197,14 +217,16 @@ function revoke(i) {
   if (i.outUrl) URL.revokeObjectURL(i.outUrl);
 }
 
-function Row({ item: i, targetKb, onRemove, onCompare, onDownload }) {
+function Row({ item: i, targetKb, onRemove, onCompare, onDownload, onErase }) {
   const r = i.result;
   const over = r && r.blob.size > targetKb * 1024;
   return (
     <div className="flex items-center gap-3 p-3">
       <img src={i.outUrl || i.origUrl} alt="" className="w-16 h-12 rounded-md object-cover bg-gray-900 shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-100 truncate" dir="ltr" title={i.file.name}>{i.file.name}</p>
+        <p className="text-sm text-gray-100 truncate" dir="ltr" title={i.file.name}>
+          {i.file.name}{i.edited && <span className="ms-2 text-xs text-blue-400" dir="rtl">(معدّلة)</span>}
+        </p>
         <div className="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
           <span>{formatBytes(i.file.size)}{r && ` · ${r.origWidth}×${r.origHeight}`}</span>
           {r && (
@@ -222,6 +244,7 @@ function Row({ item: i, targetKb, onRemove, onCompare, onDownload }) {
         {i.status === 'done' && (
           <>
             <CheckCircle2 size={16} className="text-green-400 me-1" />
+            <button onClick={onErase} title="إزالة علامة" className="p-1.5 text-gray-400 hover:text-blue-400"><Eraser size={16} /></button>
             <button onClick={onCompare} title="مقارنة قبل وبعد" className="p-1.5 text-gray-400 hover:text-blue-400"><Eye size={16} /></button>
             <button onClick={onDownload} title="تحميل" className="p-1.5 text-gray-400 hover:text-blue-400"><Download size={16} /></button>
           </>
