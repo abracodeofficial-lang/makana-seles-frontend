@@ -12,6 +12,7 @@ import { Plus, Pencil, Trash2, ShieldCheck, Users } from 'lucide-react';
 const PAGE_LABELS = {
   properties:      'العقارات',
   publishing:      'النشر',
+  marketing:       'التصميم والتسويق',
   owners:          'الملاك',
   leads:           'المهتمون',
   employees:       'الموظفون',

@@ -9,7 +9,7 @@ import { Avatar } from '../ui';
 import {
   Home, Building2, Users, UserCheck, Clock, Calendar,
   FileCheck, Bell, BellRing, MessageCircle, LogOut, Menu, X, Fingerprint, Settings, BarChart2, ShieldCheck,
-  Sun, Moon, Trash2, History, Send,
+  Sun, Moon, Trash2, History, Send, ImageDown,
 } from 'lucide-react';
 import { useTheme } from '../../lib/theme';
 
@@ -31,7 +31,8 @@ const NAV = [
   { label: 'الملاك',           path: '/owners',        icon: Users,       section: 'المبيعات',         perm: 'owners' },
   { label: 'المهتمون',         path: '/leads',         icon: UserCheck,   section: 'المبيعات',         perm: 'leads' },
   { label: 'رسائل واتساب',     path: '/broadcast',     icon: MessageCircle, section: 'المبيعات',       perm: ['leads', 'owners'] },
-  { label: 'الموظفون',         path: '/employees',     icon: Users,       section: 'الموارد البشرية', perm: 'employees' },
+  { label: 'ضغط الصور',        path: '/marketing/images', icon: ImageDown, section: 'التصميم والتسويق', perm: 'marketing' },
+  { label: 'الموظفون',         path: '/employees',    icon: Users,       section: 'الموارد البشرية', perm: 'employees' },
   { label: 'الحضور',           path: '/attendance',    icon: Clock,       section: 'الموارد البشرية', perm: 'attendance' },
   { label: 'بصمتي',            path: '/punch',         icon: Fingerprint, section: 'الموارد البشرية' },
   { label: 'الإجازات',         path: '/leaves',        icon: Calendar,    section: 'الموارد البشرية', perm: 'leave_requests' },
@@ -99,7 +100,7 @@ export default function Layout() {
     return [].concat(item.perm).some(p => permissions?.[p]?.view === true);
   });
 
-  const sections = ['المبيعات', 'الموارد البشرية', null];
+  const sections = ['المبيعات', 'التصميم والتسويق', 'الموارد البشرية', null];
 
   return (
     <div className="flex h-screen bg-gray-950 font-[Cairo] overflow-hidden" dir="rtl">

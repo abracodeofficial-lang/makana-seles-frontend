@@ -25,6 +25,7 @@ const TrashPage        = lazy(() => import('./pages/trash/TrashPage'));
 const PublishingPage   = lazy(() => import('./pages/publishing/PublishingPage'));
 const PublishDetailPage = lazy(() => import('./pages/publishing/PublishDetailPage'));
 const AuditLogPage     = lazy(() => import('./pages/audit/AuditLogPage'));
+const ImageCompressorPage = lazy(() => import('./pages/marketing/ImageCompressorPage'));
 
 function Dashboard() {
   const { employee } = useAuthStore();
@@ -202,6 +203,14 @@ export default function App() {
               <ProtectedRoute page="publishing">
                 <Suspense fallback={<Loading />}>
                   <PublishDetailPage />
+                </Suspense>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/marketing/images" element={
+              <ProtectedRoute page="marketing">
+                <Suspense fallback={<Loading />}>
+                  <ImageCompressorPage />
                 </Suspense>
               </ProtectedRoute>
             } />
