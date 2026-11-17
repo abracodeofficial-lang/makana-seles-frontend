@@ -30,7 +30,7 @@ const NAV = [
   { label: 'النشر',            path: '/publishing',    icon: Send,        section: 'المبيعات',         perm: 'publishing' },
   { label: 'الملاك',           path: '/owners',        icon: Users,       section: 'المبيعات',         perm: 'owners' },
   { label: 'المهتمون',         path: '/leads',         icon: UserCheck,   section: 'المبيعات',         perm: 'leads' },
-  { label: 'رسائل واتساب',     path: '/broadcast',     icon: MessageCircle, section: 'المبيعات',       perm: ['leads', 'owners'] },
+  { label: 'رسائل واتساب',     path: '/broadcast',     icon: MessageCircle, section: 'التصميم والتسويق',      perm: ['leads', 'owners'] },
   { label: 'ضغط الصور',        path: '/marketing/images', icon: ImageDown, section: 'التصميم والتسويق', perm: 'marketing' },
   { label: 'الموظفون',         path: '/employees',    icon: Users,       section: 'الموارد البشرية', perm: 'employees' },
   { label: 'الحضور',           path: '/attendance',    icon: Clock,       section: 'الموارد البشرية', perm: 'attendance' },
