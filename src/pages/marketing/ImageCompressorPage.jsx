@@ -7,7 +7,7 @@ import { compressToWebp, downloadBlob, formatBytes, makeZip, supportsWebpEncode,
 
 const TARGETS  = [100, 150, 200, 300, 500];
 const MAX_SIDES = [
-  { value: '',     label: 'نفس الأبعاد الأصلية' },
+  { value: 'orig', label: 'نفس الأبعاد الأصلية' },
   { value: '3840', label: '3840 بكسل (4K)' },
   { value: '2560', label: '2560 بكسل' },
   { value: '1920', label: '1920 بكسل (Full HD)' },
@@ -26,7 +26,7 @@ let seq = 0;
 export default function ImageCompressorPage() {
   const [items, setItems]       = useState([]);
   const [targetKb, setTargetKb] = useState('200');
-  const [maxSide, setMaxSide]   = useState('');
+  const [maxSide, setMaxSide]   = useState('orig');
   const [minQ, setMinQ]         = useState('0.7');
   const [dragging, setDragging] = useState(false);
   const [compare, setCompare]   = useState(null);
@@ -59,7 +59,7 @@ export default function ImageCompressorPage() {
         try {
           const r = await compressToWebp(next.file, {
             targetBytes: Number(s.targetKb) * 1024,
-            maxSide: s.maxSide ? Number(s.maxSide) : null,
+            maxSide: s.maxSide && s.maxSide !== 'orig' ? Number(s.maxSide) : null,
             minQuality: Number(s.minQ),
           });
           const current = itemsRef.current.find(i => i.id === next.id);
