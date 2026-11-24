@@ -398,7 +398,11 @@ function PropertyChip({ p, onRemove }) {
     <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-800 border border-gray-700">
       <Home size={16} className="text-blue-400 mt-0.5 shrink-0" />
       <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-5 gap-x-3 gap-y-1 text-xs">
-        <div><p className="text-gray-500">الكود</p><p className="font-mono font-bold text-gray-100" dir="ltr">{p.property_code}</p></div>
+        <div>
+          <p className="text-gray-500">الكود</p>
+          <p className="font-mono font-bold text-gray-100" dir="ltr">{p.property_code}</p>
+          {p.trial_property_code && <p className="text-gray-400" dir="ltr" title="الكود التجريبي">{p.trial_property_code}</p>}
+        </div>
         <div><p className="text-gray-500">الحي</p><p className="text-gray-200">{p.neighborhood?.name || '—'}</p></div>
         <div><p className="text-gray-500">المنطقة</p><p className="text-gray-200">{p.city?.name || '—'}</p></div>
         <div><p className="text-gray-500">السعر</p><p className="text-blue-300 font-semibold">{p.listed_price ? `${formatMoney(p.listed_price)} ريال` : '—'}</p></div>
@@ -435,7 +439,7 @@ function InterestedProperties({ value = [], onChange }) {
     <div className="space-y-2">
       <div className="flex items-end gap-2">
         <div className="flex-1">
-          <Input dir="ltr" label="كود العقار المهتم فيه" value={code} placeholder="RE-2026-001"
+          <Input dir="ltr" label="كود العقار المهتم فيه (الكود أو الكود التجريبي)" value={code} placeholder="RE-2026-001 أو الكود التجريبي"
             onChange={e => setCode(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} />
         </div>
