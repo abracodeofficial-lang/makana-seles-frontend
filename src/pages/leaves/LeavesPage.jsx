@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { leaveRequestsApi, lookupApi } from '../../api/services';
-import { PageHeader } from '../../components/layout/Layout';
+import { leaveRequestsApi, lookupApi, employeesApi } from '../../api/services';
+import { PageHeader, useIsAdmin } from '../../components/layout/Layout';
 import {
   Btn, Badge, StatCard, Table, Tr, Td, Modal,
   Input, Select, Textarea, Card, Loading, Avatar,
@@ -250,7 +250,19 @@ export default function LeavesPage() {
 
 function NewLeaveRequest({ open, onClose }) {
   const qc = useQueryClient();
-  const [form, setForm]       = useState({ leave_type_id: '', from_date: '', to_date: '', reason: '' });
+  const { can, employee: me } = useAuthStore();
+  const { isAdmin } = useIsAdmin();
+  const canOnBehalf = isAdmin || can('leave_requests', 'approve');
+  const [form, setForm]       = useState({ employee_id: '', leave_type_id: '', from_date: '', to_date: '', reason: '' });
+  const { data: empData } = useQuery({
+    queryKey: ['employees-all'],
+    queryFn:  () => employeesApi.list({ per_page: 200, status: 'نشط' }).then(r => r.data),
+    enabled:  open && canOnBehalf,
+  });
+  const employeeOptions = [
+    { value: '', label: 'أنا' },
+    ...(empData?.data?.data || []).filter(e => e.id !== me?.id).map(e => ({ value: String(e.id), label: e.full_name })),
+  ];
   const [attachment, setAttachment] = useState(null);
   const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -290,6 +302,7 @@ function NewLeaveRequest({ open, onClose }) {
     setLoading(true);
     try {
       const fd = new FormData();
+      if (form.employee_id) fd.append('employee_id', form.employee_id);
       fd.append('leave_type_id', form.leave_type_id);
       fd.append('from_date',     form.from_date);
       fd.append('to_date',       form.to_date);
@@ -300,7 +313,7 @@ function NewLeaveRequest({ open, onClose }) {
       toast.success('تم إرسال طلب الإجازة');
       qc.invalidateQueries(['leave-requests']);
       onClose();
-      setForm({ leave_type_id: '', from_date: '', to_date: '', reason: '' });
+      setForm({ employee_id: '', leave_type_id: '', from_date: '', to_date: '', reason: '' });
       setAttachment(null);
     } catch (err) {
       const errors = err.response?.data?.errors;
@@ -318,6 +331,11 @@ function NewLeaveRequest({ open, onClose }) {
         </>
       }>
       <div className="space-y-4">
+
+        {canOnBehalf && (
+          <Select label="الموظف" clearable={false} value={form.employee_id}
+            onChange={e => set('employee_id', e.target.value)} options={employeeOptions} />
+        )}
 
         {/* نوع الإجازة */}
         <Select
