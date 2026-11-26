@@ -248,11 +248,16 @@ function GatewayModal({ open, onClose }) {
                   </div>
                   <p className="text-xs text-gray-500">
                     بالبداية خلّي الحد اليومي 50 أو أقل، وزيده تدريجياً. الفاصل بين الرسائل بيتحدد لكل حملة.
+                    إشعارات النظام بتوصل لكل موظف على رقمه (خانة الواتساب أو الجوال) فوراً وما بتنحسب من الحد اليومي.
+                    {g.notifications_pending > 0 && ` · بالانتظار هلّق: ${g.notifications_pending} إشعار`}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Btn loading={save.isPending} onClick={() => save.mutate({ ...form, daily_limit: Number(form.daily_limit) })}>حفظ الإعدادات</Btn>
                     <Btn variant="outline" onClick={() => save.mutate({ paused: !g.settings.paused })}>
                       {g.settings.paused ? 'استئناف كل الإرسال' : 'إيقاف كل الإرسال مؤقتاً'}
+                    </Btn>
+                    <Btn variant="outline" onClick={() => save.mutate({ notify_whatsapp: !g.settings.notify_whatsapp })}>
+                      🔔 إشعارات النظام على واتساب: {g.settings.notify_whatsapp ? 'شغّالة' : 'موقوفة'}
                     </Btn>
                     <Btn variant="ghost" loading={logout.isPending}
                       onClick={() => confirm('فصل الرقم عن النظام؟ الإرسال التلقائي بيوقف لحد ما تمسح كود جديد.') && logout.mutate()}>
